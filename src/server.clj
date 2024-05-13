@@ -2,19 +2,44 @@
 
 (ns server ;простарнство имён server будет использовать пространства имён clojure.contrib.server-socket и clojure.contrib.duck-streams
     (:use [clojure.contrib server-socket duck-streams]) ;server-socket работает с сокетами, а duck-streams работает с потоками ввода-вывода
-    (:require [welcome :refer [welcomeInGame]]) ;импортируем функцию-приветствие
+    (:require [welcome :refer [welcome-in-game]]) ;импортируем функцию-приветствие
+    (:require [map :refer [create-empty-map print-map get-random-empty-cell get-static-empty-cell place-player move-player]]) ;импортируем функции для работы с картой
 )
 
-(def port (* 5 1111)) ;будем подключаться к серверу по порту 5555 
+(def port 5555) ;будем подключаться к серверу по порту 5555
+(def exit-keyword "exit") ;кодовое слово для отключения с сервера
+(def game-map (create-empty-map)) ;создаём пустую карту
 
-(defn server_base_fun [input_stream output_stream] ;основная функция, которая будет отвечать за ввод/вывод
-    (binding [*in* (reader input_stream) *out* (writer output_stream)] ;биндим потоки ввода/вывода
-        (welcomeInGame) ;вызываем функцию-приветствие
-        (loop [] ;запускаем бесконечный цикл
-            (println (read-line)) ;печатает полученную строку от пользователя
-            (recur) ;рекурсивный вызов себя же
-        )
-    )
-)
+(defn println-win [s] ;функция, которая корректно добавляет символ переноса строк для Windows
+    (.write *out* s)
+    (.write *out* "\r\n")
+    (.flush *out*))
 
-(def server (create-server port server_base_fun)) ;запускаем сервер на порту и указываем функцию для выполнения
+(defn server-base-fun [input-stream output-stream] ;основная функция, которая делает всё
+    (let [[player-x player-y] (get-static-empty-cell game-map)] ;задаём точку спавна персонажу
+        (place-player game-map player-x player-y) ;помещаем персонажа
+        (println-win "Player initialized. Waiting for input...") ;для отладки
+        (binding [*in* (reader input-stream) *out* (writer output-stream)] ;биндим потоки ввода-вывода
+            (welcome-in-game) ;приветствие
+            (flush) ;очистка буфера вывода
+            (loop [game-map game-map player-x player-x player-y player-y] ;продублированные аргументы для того, чтобы их было чётное количество (просто нужно для loop)
+                (print-map-with-player game-map player-x player-y) ; используем новую функцию для вывода карты с игроком
+                (flush) ;очистка буфера вывода
+                (let [input (read-line)] ;запуск цикла ввода
+                    (cond ;условия
+                        (= input exit-keyword) ;если пробуем выйти
+                            (do
+                                (println-win "Thank you for playing the Jackal Game!")
+                                (flush)
+                                (.close output-stream)) ;то выходим (Шерлок?)
+                        (= input "w") (recur (move-player game-map player-x player-y 0 -1) player-x (dec player-y)) ;иначе переходим куда-то
+                        (= input "a") (recur (move-player game-map player-x player-y -1 0) (dec player-x) player-y)
+                        (= input "s") (recur (move-player game-map player-x player-y 0 1) player-x (inc player-y))
+                        (= input "d") (recur (move-player game-map player-x player-y 1 0) (inc player-x) player-y)
+                        :else ;если пользователь не попадает ложкой в рот с первой попытки
+                            (do
+                                (println-win "Invalid input. Use w, a, s, or d.") ;инвалид ввод
+                                (flush)
+                                (recur game-map player-x player-y)))))))) ;повторный вызов этой красоты
+
+(def server (create-server port server-base-fun)) ;запуск сервера на порту
