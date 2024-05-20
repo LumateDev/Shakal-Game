@@ -4,7 +4,7 @@
     (.write *out* "\r\n")
     (.flush *out*))
 
-(def map-size 10) ;задаём размер карты
+(def map-size 15) ;задаём размер карты
 (def map-cell ".") ;задаём символ клетки карты
 
 (defn create-empty-map [] ;создаём пустую карту
@@ -21,13 +21,10 @@
                 (print cell)))
         (println-win "")))
 
-(defn get-random-empty-cell [game-map] ;получение случайной клетки ан карте (ПОКА НЕ РАБОТАЕТ)
-    (println-win "Функция get-random-empty-cell запустилась")
-    (loop [x (rand-int map-size) y (rand-int map-size)]
-        (println-win "Функция get-random-empty-cell начала что-то делать")
-        (if (= (get-in game-map [y x]) \.) (println-win (str "Checking cell [" x "," y "]")) (recur (rand-int map-size) (rand-int map-size)))))
+(defn get-random-empty-cell [game-map] ;получение случайной клетки на карте
+    (let [x (rand-int map-size) y (rand-int map-size)] [x y]))
 
-(defn get-static-empty-cell [game-map] [0 0]) ;временная функция для проверки размещения персонажа
+(defn get-static-empty-cell [game-map] [0 0]) ;получения статичной клетки на карте
 
 (defn place-player [game-map x y] ;функция, которая помещает игрока на переданную клетку
     (println-win (str "Placing player at coordinates [" x "," y "]")) ;для отладки
@@ -37,10 +34,10 @@
     (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map)]
         (if (or (< new-x 0) (> new-x (dec map-size)) ;проверяем новый х
                 (< new-y 0) (> new-y (dec map-size))) ;проверяем новый y
-            (do (println-win "A po popke?") ;показываем предупреждение
+            (do (println-win "You can't go outside the map!") ;показываем предупреждение
                 game-map) ;возвращаем неизменную карту
             (try
                 (assoc-in (assoc-in game-map [y x] \.) [new-y new-x] \X) ;пытаемся переместить персонажа
                 (catch IndexOutOfBoundsException e
-                (println-win "Caught IndexOutOfBoundsException. Ignoring movement (clojure like eat kal, tak chto kostil).") ;обрабатываем исключение
+                (println-win "Caught IndexOutOfBoundsException. Ignoring movement (P.S. patchami popravim, chestno).") ;обрабатываем исключение
                 game-map))))) ;возвращаем неизменную карту

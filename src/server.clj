@@ -16,7 +16,7 @@
     (.flush *out*))
 
 (defn server-base-fun [input-stream output-stream] ;основная функция, которая делает всё
-    (let [[player-x player-y] (get-static-empty-cell game-map)] ;задаём точку спавна персонажу
+    (let [[player-x player-y] (get-random-empty-cell game-map)] ;задаём точку спавна персонажу
         (place-player game-map player-x player-y) ;помещаем персонажа
         (println-win "Player initialized. Waiting for input...") ;для отладки
         (binding [*in* (reader input-stream) *out* (writer output-stream)] ;биндим потоки ввода-вывода
