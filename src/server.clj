@@ -32,10 +32,18 @@
                                 (println-win "Thank you for playing the Jackal Game!")
                                 (flush)
                                 (.close output-stream)) ;то выходим (Шерлок?)
-                        (= input "w") (recur (move-player game-map player-x player-y 0 -1) player-x (dec player-y)) ;иначе переходим куда-то
-                        (= input "a") (recur (move-player game-map player-x player-y -1 0) (dec player-x) player-y)
-                        (= input "s") (recur (move-player game-map player-x player-y 0 1) player-x (inc player-y))
-                        (= input "d") (recur (move-player game-map player-x player-y 1 0) (inc player-x) player-y)
+                        (= input "w") (let [new-map (move-player game-map player-x player-y 0 -1)]
+                            (if (= new-map game-map) (recur game-map player-x player-y)
+                                                     (recur new-map player-x (dec player-y))))
+                        (= input "a") (let [new-map (move-player game-map player-x player-y -1 0)]
+                            (if (= new-map game-map) (recur game-map player-x player-y)
+                                                     (recur new-map (dec player-x) player-y)))
+                        (= input "s") (let [new-map (move-player game-map player-x player-y 0 1)]
+                            (if (= new-map game-map) (recur game-map player-x player-y)
+                                                     (recur new-map player-x (inc player-y))))
+                        (= input "d") (let [new-map (move-player game-map player-x player-y 1 0)]
+                            (if (= new-map game-map) (recur game-map player-x player-y)
+                                                     (recur new-map (inc player-x) player-y)))
                         :else ;если пользователь не попадает ложкой в рот с первой попытки
                             (do
                                 (println-win "Invalid input. Use w, a, s, or d.") ;инвалид ввод

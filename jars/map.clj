@@ -6,10 +6,18 @@
 
 (def map-size 15) ;задаём размер карты
 (def map-cell ".") ;задаём символ клетки карты
+(def border-cell "#") ;задаём границы карты
 
 (defn create-empty-map [] ;создаём пустую карту
-    (let [empty-row (vec (for [_ (range map-size)] map-cell))]
-        (vec (for [_ (range map-size)] empty-row))))
+    (let [empty-row (vec (for [_ (range map-size)] map-cell))
+          border-row (vec (for [_ (range map-size)] border-cell))]
+        (vec (for [i (range map-size)]
+            (if (or (= i 0) (= i (dec map-size)))
+                border-row
+                (vec (for [j (range map-size)]
+                    (if (or (= j 0) (= j (dec map-size)))
+                        border-cell
+                        map-cell))))))))
 
 (defn print-map [game-map] ;выводим карту в консоль
     (doseq [row game-map] (println-win (apply str row))))
@@ -22,7 +30,7 @@
         (println-win "")))
 
 (defn get-random-empty-cell [game-map] ;получение случайной клетки на карте
-    (let [x (rand-int map-size) y (rand-int map-size)] [x y]))
+    (let [x (+ 1 (rand-int (inc (- 13 1)))) y (+ 1 (rand-int (inc (- 13 1))))] [x y]))
 
 (defn get-static-empty-cell [game-map] [0 0]) ;получения статичной клетки на карте
 
@@ -30,14 +38,16 @@
     (println-win (str "Placing player at coordinates [" x "," y "]")) ;для отладки
     (assoc-in game-map [y x] \*))
 
-(defn move-player [game-map x y dx dy] ;функция перемещения игрока
-    (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map)]
+(defn move-player [game-map x y dx dy]
+    (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map) border-cell "#"]
         (if (or (< new-x 0) (> new-x (dec map-size)) ;проверяем новый х
-                (< new-y 0) (> new-y (dec map-size))) ;проверяем новый y
-            (do (println-win "You can't go outside the map!") ;показываем предупреждение
+                (< new-y 0) (> new-y (dec map-size)) ;проверяем новый y
+                (= (get-in game-map [new-y new-x]) border-cell)) ; проверяем, является ли новая позиция границей
+            (do (println-win "You can't move there! It's a boundary or outside the map.") ;показываем предупреждение
                 game-map) ;возвращаем неизменную карту
             (try
                 (assoc-in (assoc-in game-map [y x] \.) [new-y new-x] \X) ;пытаемся переместить персонажа
                 (catch IndexOutOfBoundsException e
-                (println-win "Caught IndexOutOfBoundsException. Ignoring movement (P.S. patchami popravim, chestno).") ;обрабатываем исключение
-                game-map))))) ;возвращаем неизменную карту
+                    (do (println "Caught IndexOutOfBoundsException. Ignoring movement (patchami popravim, chestno).") ;обрабатываем исключение
+                        game-map)))))) ;возвращаем неизменную карту
+
