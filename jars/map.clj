@@ -7,6 +7,7 @@
 (def map-size 15) ;задаём размер карты
 (def map-cell ".") ;задаём символ клетки карты
 (def border-cell "#") ;задаём границы карты
+(def treasure-symbol "$") ;задаём символ обозначающий сокровище
 
 (defn create-empty-map [] ;создаём пустую карту
     (let [empty-row (vec (for [_ (range map-size)] map-cell))
@@ -32,6 +33,17 @@
 (defn get-random-empty-cell [game-map] ;получение случайной клетки на карте
     (let [x (+ 1 (rand-int (inc (- 13 1)))) y (+ 1 (rand-int (inc (- 13 1))))] [x y]))
 
+
+(defn place-treasures [game-map treasure-count treasure-symbol]
+  (loop [current-map game-map, treasures-left treasure-count]
+    (if (zero? treasures-left)
+      current-map
+      (let [[x y] (get-random-empty-cell current-map)]
+        (if (= (get-in current-map [y x]) map-cell)
+          (recur (assoc-in current-map [y x] treasure-symbol) (dec treasures-left))
+          (recur current-map treasures-left))))))
+
+
 (defn get-static-empty-cell [game-map] [0 0]) ;получения статичной клетки на карте
 
 (defn place-player [game-map x y] ;функция, которая помещает игрока на переданную клетку
@@ -52,19 +64,32 @@
                 dy (range (- radius) (inc radius))]
             [(+ x dx) (+ y dy)])))
 
-(defn move-player [game-map explored x y dx dy] ;перемещение игрока
+(defn money-message [money]
+    (println-win (str "Your currnet balance: " money) )
+    )
+    
+
+
+(defn move-player [game-map explored x y dx dy player-balance treasure-symbol] ;перемещение игрока
     (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map) border-cell "#"]
-    (if (or (< new-x 0) (> new-x (dec map-size)) ;проверяем новый х
-            (< new-y 0) (> new-y (dec map-size)) ;проверяем новый y
-            (= (get-in game-map [new-y new-x]) border-cell)) ;проверяем, является ли новая позиция границей
-        (do (println-win "You can't move there! It's a boundary or outside the map.") ;показываем предупреждение
-            [game-map explored]) ;возвращаем неизменную карту и структуру открытых клеток
-        (try
-            [(assoc-in (assoc-in game-map [y x] \.) [new-y new-x] \X) ;пытаемся переместить персонажа
-                (update-explored explored new-x new-y 1)]
-            (catch IndexOutOfBoundsException e
-                (do (println-win "Caught IndexOutOfBoundsException. Ignoring movement (patchami popravim, chestno).") ;обрабатываем исключение
-                    [game-map explored])))))) ;возвращаем неизменную карту и структуру открытых клеток
+        (if (or (< new-x 0) (> new-x (dec map-size)) ;проверяем новый х
+                (< new-y 0) (> new-y (dec map-size)) ;проверяем новый y
+                (= (get-in game-map [new-y new-x]) border-cell)) ;проверяем, является ли новая позиция границей
+            (do (println-win "You can't move there! It's a boundary or outside the map.") ;показываем предупреждение
+                [game-map explored player-balance]) ;возвращаем неизменную карту и структуру открытых клеток
+            (let [current-cell (get-in game-map [new-y new-x])]
+                (if (= current-cell treasure-symbol)
+                    (do (money-message (inc player-balance)) ;уведомляем о пополнении счёта
+                        [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] \X) ;обновляем карту
+                         (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
+                         (inc player-balance)]) ;увеличиваем баланс
+                    (try
+                        [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] \X) ;пытаемся переместить персонажа
+                         (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
+                         player-balance] ;баланс остается прежним
+                        (catch IndexOutOfBoundsException e
+                            (do (println-win "Caught IndexOutOfBoundsException. Ignoring movement (patchami popravim, chestno).") ;обрабатываем исключение
+                                [game-map explored player-balance]))))))))
 
 (defn print-map-with-explored [game-map explored] ;печать карты со структурой
     (doseq [y (range (count game-map))]
@@ -73,3 +98,5 @@
                 (get-in game-map [y x])
                     " ")))
         (println-win "")))
+
+
