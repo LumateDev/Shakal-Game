@@ -55,6 +55,6 @@
 
 ---
 
-# Хз что это, но будет тут 
+# Хз что это, но будет тут
 
 ![1](https://github.com/LumateDev/Shakal-Game/blob/master/drawio.png)
