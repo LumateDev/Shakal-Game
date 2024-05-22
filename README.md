@@ -54,3 +54,7 @@
 После этого можно открыть новый терминал, подключиться командой: `telnet localhost 5555`.
 
 ---
+
+# Хз что это, но будет тут 
+
+![1](https://github.com/LumateDev/Shakal-Game/blob/master/drawio.png)
