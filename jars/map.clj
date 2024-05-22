@@ -9,6 +9,20 @@
 (def border-cell "#") ;задаём границы карты
 (def treasure-symbol "$") ;задаём символ обозначающий сокровище
 
+(def yell-bg "\033[43m") ; жёлтый цвет фона
+(def grey-background "\u001B[48;5;8m") ; Серый цвет фона
+
+(def yellow "\u001b[33m") ; жёлтый цвет текста
+(def green "\u001b[32m") ; жёлтый цвет текста
+(def red "\u001b[31m") ; красный цвет текста
+
+(def nrm-bg  "\033[0m")  ; вернуть норм цвет
+
+
+(defn colorize [color-code text]
+  (str color-code text nrm-bg)) ; функция смены цвета
+
+
 (defn create-empty-map [] ;создаём пустую карту
     (let [empty-row (vec (for [_ (range map-size)] map-cell))
           border-row (vec (for [_ (range map-size)] border-cell))]
@@ -64,11 +78,21 @@
                 dy (range (- radius) (inc radius))]
             [(+ x dx) (+ y dy)])))
 
-(defn money-message [money]
-    (println-win (str "Your currnet balance: " money) )
-    )
-    
 
+(defn print-lives [player-lives]
+  (println-win (colorize grey-background (str "HP: " (colorize red (apply str (take player-lives (repeat  "<3 ")))))))) ; функция отображения жизней
+
+(defn decrease-lives [player-lives]
+  (dec player-lives))  ; функция отнимания жизней (пока нигде не вызывается, после может вызыватся в сражениях, или при наступании на ловушки)
+
+(defn money-message [money]
+    (println-win (colorize yellow (str "Current balance has been increased to: " money "\n"))))
+    
+; Функция для постоянного отображения текущего баланса
+(defn print-balance [player-balance]
+  (if (= player-balance 0)
+    (println-win (colorize grey-background (str "Balance: " (colorize green "0"))))
+    (println-win (colorize grey-background (str "Balance: " (colorize green (apply str (take player-balance (repeat "$")))))))))
 
 (defn move-player [game-map explored x y dx dy player-balance treasure-symbol] ;перемещение игрока
     (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map) border-cell "#"]
@@ -79,7 +103,7 @@
                 [game-map explored player-balance]) ;возвращаем неизменную карту и структуру открытых клеток
             (let [current-cell (get-in game-map [new-y new-x])]
                 (if (= current-cell treasure-symbol)
-                    (do (money-message (inc player-balance)) ;уведомляем о пополнении счёта
+                    (do (money-message (str (inc player-balance))) ;уведомляем о пополнении счёта (перевожу ещё и в строку так как нужно для смены цвета)
                         [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] \X) ;обновляем карту
                          (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
                          (inc player-balance)]) ;увеличиваем баланс

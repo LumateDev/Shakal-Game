@@ -8,4 +8,5 @@
     (println-win "Hi!")
     (println-win "Welcome to Shakals Game!")
     (println-win "Moving: FORWARD - w, LEFT - a, BACKWARD - s, RIGHT - d.")
-    (println-win "Enter <exit> to exit."))
+    (println-win "Enter <exit> to exit.")
+    (println-win "\n")) ; Визуально отделил

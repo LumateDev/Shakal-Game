@@ -10,8 +10,10 @@
 (def port 5555) ;будем подключаться к серверу по порту 5555
 (def exit-keyword "exit") ;кодовое слово для отключения с сервера
 (def game-map (create-empty-map)) ;создаём пустую карту
-(def treasure-symbol "$") ;задаём символ обозначающий сокровище
+(def treasure-symbol "\u001b[43m\u001b[35m$\u001b[0m") ;задаём символ обозначающий сокровище
 (def treasure-count 10) ;задаём количество сокровищы
+
+(def player-lives 3) ; начальное колличество жизней
 
 (defn println-win [s] ;функция, которая корректно добавляет символ переноса строк для Windows
     (.write *out* s)
@@ -33,7 +35,11 @@
                    explored explored
                    player-x player-x
                    player-y player-y
-                   player-balance player-balance]
+                   player-lives player-lives
+                   player-balance player-balance] ; новая использующая имя старой 
+                (print-lives player-lives) ; печать HP перед печатью карты
+                (print-balance player-balance) ; печать баланса перед печатью карты
+                (print "\n") ; визуально отделяем карту от статов  
                 (print-map-with-explored game-map explored) ;печать карты
                 (flush)
                 (let [input (read-line)] ;считываем ввод
@@ -45,24 +51,24 @@
                                 (.close output-stream)) ;то выходим (Шерлок?)
                         (= input "w") ;иначе переходим куда-то
                             (let [[new-map new-explored new-balance] (move-player game-map explored player-x player-y 0 -1 player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-balance)
-                                    (recur new-map new-explored player-x (dec player-y) new-balance)))
+                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-balance)
+                                    (recur new-map new-explored player-x (dec player-y) player-lives new-balance)))
                         (= input "a") 
                             (let [[new-map new-explored new-balance] (move-player game-map explored player-x player-y -1 0 player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-balance)
-                                    (recur new-map new-explored (dec player-x) player-y new-balance)))
+                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-balance)
+                                    (recur new-map new-explored (dec player-x) player-y player-lives new-balance)))
                         (= input "s") 
                             (let [[new-map new-explored new-balance] (move-player game-map explored player-x player-y 0 1 player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-balance)
-                                    (recur new-map new-explored player-x (inc player-y) new-balance)))
+                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-balance)
+                                    (recur new-map new-explored player-x (inc player-y) player-lives new-balance)))
                         (= input "d") 
                             (let [[new-map new-explored new-balance] (move-player game-map explored player-x player-y 1 0 player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-balance) 
-                                    (recur new-map new-explored (inc player-x) player-y new-balance)))
+                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-balance) 
+                                    (recur new-map new-explored (inc player-x) player-y player-lives new-balance)))
                         :else ;если пользователь не попадает ложкой в рот с первой попытки
                             (do
                                 (println-win "Invalid input. Use w, a, s, or d.") ;то предупреждение
                                 (flush)
-                                (recur game-map explored player-x player-y player-balance)))))))) ;повторение всей красоты
+                                (recur game-map explored player-x player-y player-lives player-balance)))))))) ;повторение всей красоты
 
 (def server (create-server port server-base-fun)) ;запуск сервера на порту
