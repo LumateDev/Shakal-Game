@@ -30,6 +30,8 @@
 (def legendary-armor-count 1)
 
 (def player-lives 3) ; начальное колличество жизней
+(def player-armor 0) ; начальное колличество очков защиты
+(def player-damage 1) ; начальное колличество очков урона
 
 (defn println-win [s] ;функция, которая корректно добавляет символ переноса строк для Windows
     (.write *out* s)
@@ -97,8 +99,13 @@
                    player-x player-x
                    player-y player-y
                    player-lives player-lives
-                   player-balance player-balance] ; новая использующая имя старой 
+                   player-armor player-armor
+                   player-damage player-damage
+                   player-balance player-balance] ; новая использующая имя старой
+                (println-win "Your stats:")
                 (print-lives player-lives) ; печать HP перед печатью карты
+                (print-armor player-armor) ; печать очков брони перед печатью карты
+                (print-damage player-damage) ; печать очков урона перед печатью карты
                 (print-balance player-balance) ; печать баланса перед печатью карты
                 (print "\n") ; визуально отделяем карту от статов  
                 (print-map-with-explored game-map explored) ;печать карты
@@ -111,25 +118,25 @@
                                 (flush)
                                 (.close output-stream)) ;то выходим (Шерлок?)
                         (= input "w") ;иначе переходим куда-то
-                            (let [[new-map new-explored new-balance] (move-player game-map explored player-x player-y 0 -1 player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-balance)
-                                    (recur new-map new-explored player-x (dec player-y) player-lives new-balance)))
+                            (let [[new-map new-explored new-balance new-armor] (move-player game-map explored player-x player-y 0 -1 player-armor player-balance treasure-symbol)]
+                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
+                                    (recur new-map new-explored player-x (dec player-y) player-lives new-armor player-damage new-balance)))
                         (= input "a") 
-                            (let [[new-map new-explored new-balance] (move-player game-map explored player-x player-y -1 0 player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-balance)
-                                    (recur new-map new-explored (dec player-x) player-y player-lives new-balance)))
+                            (let [[new-map new-explored new-balance new-armor] (move-player game-map explored player-x player-y -1 0 player-armor player-balance treasure-symbol)]
+                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
+                                    (recur new-map new-explored (dec player-x) player-y player-lives new-armor player-damage new-balance)))
                         (= input "s") 
-                            (let [[new-map new-explored new-balance] (move-player game-map explored player-x player-y 0 1 player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-balance)
-                                    (recur new-map new-explored player-x (inc player-y) player-lives new-balance)))
+                            (let [[new-map new-explored new-balance new-armor] (move-player game-map explored player-x player-y 0 1 player-armor player-balance treasure-symbol)]
+                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
+                                    (recur new-map new-explored player-x (inc player-y) player-lives new-armor player-damage new-balance)))
                         (= input "d") 
-                            (let [[new-map new-explored new-balance] (move-player game-map explored player-x player-y 1 0 player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-balance) 
-                                    (recur new-map new-explored (inc player-x) player-y player-lives new-balance)))
+                            (let [[new-map new-explored new-balance new-armor] (move-player game-map explored player-x player-y 1 0 player-armor player-balance treasure-symbol)]
+                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance) 
+                                    (recur new-map new-explored (inc player-x) player-y player-lives new-armor player-damage new-balance)))
                         :else ;если пользователь не попадает ложкой в рот с первой попытки
                             (do
                                 (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n") ;то предупреждение
                                 (flush)
-                                (recur game-map explored player-x player-y player-lives player-balance)))))))) ;повторение всей красоты
+                                (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)))))))) ;повторение всей красоты
 
 (def server (create-server port server-base-fun)) ;запуск сервера на порту
