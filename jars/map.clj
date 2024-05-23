@@ -9,7 +9,9 @@
 
 (def map-cell "\u001b[43m\u001b[33m.\u001b[0m") ;задаём символ клетки карты
 (def border-cell "\u001b[44m\u001b[34m#\u001b[0m") ;задаём границы карты
-(def treasure-symbol "$") ;задаём символ обозначающий сокровище
+
+; (def treasure-symbol "$") ;задаём символ обозначающий сокровище (Задаётся в файле сервера, а сюда передаётся, так что рудимент!) 
+; (УБЕДИТЕЛЬНАЯ ПРОСЬБА ОТ КОМЕНТОВ КОД НЕ ЧИСТИТЬ, ЭТО ПАМЯТЬ И ПОНИМАНИЕ ТОГО ЧТО БЫЛО И ЧТО ЕСТЬ)
 
 (def yell-bg "\033[43m") ; жёлтый цвет фона
 (def grey-background "\u001b[40m") ; Серый цвет фона
@@ -50,6 +52,7 @@
     (let [x (+ 1 (rand-int (inc (- (- map-size 2) 1)))) y (+ 1 (rand-int (inc (- (- map-size 2) 1))))] [x y]))
 
 
+; Функция для рандомного размещения чего бы-то ни было на карте, но Саня писал под сокровища и я и н стал переименовывать но переиспользую
 (defn place-treasures [game-map treasure-count treasure-symbol]
   (loop [current-map game-map, treasures-left treasure-count]
     (if (zero? treasures-left)

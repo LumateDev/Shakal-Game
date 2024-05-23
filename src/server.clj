@@ -10,8 +10,16 @@
 (def port 5555) ;будем подключаться к серверу по порту 5555
 (def exit-keyword "exit") ;кодовое слово для отключения с сервера
 (def game-map (create-empty-map)) ;создаём пустую карту
+
 (def treasure-symbol "\u001b[47m\u001b[32m$\u001b[0m") ;задаём символ обозначающий сокровище
 (def treasure-count 10) ;задаём количество сокровищы
+
+(def common-weapons-symbol "\u001b[47m\u001b[30;1m!\u001b[0m")
+(def common-weapons-count 5)
+(def rare-weapons-symbol "\u001b[42m\u001b[37;1m|\u001b[0m")
+(def rare-weapons-count 3)
+(def legendary-weapons-symbol "\u001b[45m\u001b[33;1m~\u001b[0m")
+(def legendary-weapons-count 1)
 
 (def player-lives 3) ; начальное колличество жизней
 
@@ -23,8 +31,11 @@
 (defn server-base-fun [input-stream output-stream] ;основная функция, которая делает всё
     (let [initial-game-map (create-empty-map) ;создание пустой карты
           game-map-with-treasures (place-treasures initial-game-map treasure-count treasure-symbol) ;разместить сокровища на карте
-          [player-x player-y] (get-random-empty-cell game-map-with-treasures) ;получаем клетку для игрока
-          game-map (place-player game-map-with-treasures player-x player-y) ;спавним игрока
+          game-map-with-common-weapons (place-treasures game-map-with-treasures common-weapons-count common-weapons-symbol) ; разместить общие оружия на карте
+          game-map-with-rare-weapons (place-treasures game-map-with-common-weapons rare-weapons-count rare-weapons-symbol) ; разместить редкие оружия на карте
+          game-map-with-legendary-weapons (place-treasures game-map-with-rare-weapons legendary-weapons-count legendary-weapons-symbol) ; разместить легендарные оружия на карте
+          [player-x player-y] (get-random-empty-cell game-map-with-legendary-weapons) ;получаем клетку для игрока
+          game-map (place-player game-map-with-legendary-weapons player-x player-y) ;спавним игрока
           explored (update-explored (initialize-explored (count game-map)) player-x player-y 1) ;обновляем данные о карте
           player-balance 0] ;обновляем данные о balance
         (println "Player initialized. Waiting for input...") ;для отладки
