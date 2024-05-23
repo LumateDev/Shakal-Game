@@ -62,5 +62,5 @@
 
 # Хз что это, но будет тут
 
-![1](https://github.com/LumateDev/Shakal-Game/blob/master/drawio.png)
+![1](https://github.com/LumateDev/Shakal-Game/blob/master/net-highlevel.png)
 ![2] (https://github.com/LumateDev/Shakal-Game/blob/master/net-highlevel.png)
