@@ -102,10 +102,14 @@
                    player-armor player-armor
                    player-damage player-damage
                    player-balance player-balance] ; новая использующая имя старой
-                (println-win "Your stats:")
+                (println-win "\u001b[32;1mYour stats:\u001b[0m")
                 (print-lives player-lives) ; печать HP перед печатью карты
                 (print-armor player-armor) ; печать очков брони перед печатью карты
                 (print-damage player-damage) ; печать очков урона перед печатью карты
+                (print "\n")
+                (println-win "\u001b[33;1mYour inventory:\u001b[0m")
+                (print-current-armor player-armor) ; печать надетой брони
+                (print-current-weapon player-damage) ; печать текущего оружия
                 (print-balance player-balance) ; печать баланса перед печатью карты
                 (print "\n") ; визуально отделяем карту от статов  
                 (print-map-with-explored game-map explored) ;печать карты
@@ -118,21 +122,21 @@
                                 (flush)
                                 (.close output-stream)) ;то выходим (Шерлок?)
                         (= input "w") ;иначе переходим куда-то
-                            (let [[new-map new-explored new-balance new-armor] (move-player game-map explored player-x player-y 0 -1 player-armor player-balance treasure-symbol)]
+                            (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
                                 (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    (recur new-map new-explored player-x (dec player-y) player-lives new-armor player-damage new-balance)))
+                                    (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance)))
                         (= input "a") 
-                            (let [[new-map new-explored new-balance new-armor] (move-player game-map explored player-x player-y -1 0 player-armor player-balance treasure-symbol)]
+                            (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol)]
                                 (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    (recur new-map new-explored (dec player-x) player-y player-lives new-armor player-damage new-balance)))
+                                    (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance)))
                         (= input "s") 
-                            (let [[new-map new-explored new-balance new-armor] (move-player game-map explored player-x player-y 0 1 player-armor player-balance treasure-symbol)]
+                            (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol)]
                                 (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    (recur new-map new-explored player-x (inc player-y) player-lives new-armor player-damage new-balance)))
+                                    (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance)))
                         (= input "d") 
-                            (let [[new-map new-explored new-balance new-armor] (move-player game-map explored player-x player-y 1 0 player-armor player-balance treasure-symbol)]
+                            (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol)]
                                 (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance) 
-                                    (recur new-map new-explored (inc player-x) player-y player-lives new-armor player-damage new-balance)))
+                                    (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance)))
                         :else ;если пользователь не попадает ложкой в рот с первой попытки
                             (do
                                 (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n") ;то предупреждение
