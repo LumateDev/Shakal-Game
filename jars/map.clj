@@ -4,8 +4,9 @@
     (.write *out* "\r\n")
     (.flush *out*))
 
-(def map-size 30) ;задаём размер карты
-(def player-symbol "\u001b[46m\u001b[36;1mX\u001b[0m")
+(def map-size 40) ;задаём размер карты
+(def player-symbol "\u001b[46m\u001b[36;1mX\u001b[0m") ; это игрок
+(def enemies-symbol "\u001b[41m\u001b[30;1mX\u001b[0m") ; это враги
 
 (def map-cell "\u001b[43m\u001b[33m.\u001b[0m") ;задаём символ клетки карты
 (def border-cell "\u001b[44m\u001b[34m#\u001b[0m") ;задаём границы карты
@@ -85,7 +86,7 @@
 
 
 (defn print-lives [player-lives]
-  (println-win (colorize grey-background (str "HP: " (colorize red (apply str (take player-lives (repeat  "<3 ")))))))) ; функция отображения жизней
+  (println-win (colorize grey-background (str "HP: " (colorize red (apply str (take player-lives (repeat  "<3 ")))))))) ; функция отображения жизней ♥
 
 (defn decrease-lives [player-lives]
   (dec player-lives))  ; функция отнимания жизней (пока нигде не вызывается, после может вызыватся в сражениях, или при наступании на ловушки)
