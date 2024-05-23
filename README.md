@@ -60,9 +60,13 @@
 
 ---
 
+# Первый прототип устройства сети
+
+![1](https://github.com/LumateDev/Shakal-Game/blob/master/drawio.png)
+
 # Устройство сети
 
-![1](https://github.com/LumateDev/Shakal-Game/blob/master/net-highlevel.png)
+![2](https://github.com/LumateDev/Shakal-Game/blob/master/net-highlevel.png)
 
 ## Ход работы сервера:
 Сервер представлен в виде программы на clojure. Принимает подключения с помощью telnet на порту 5555. 
