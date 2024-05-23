@@ -4,16 +4,18 @@
     (.write *out* "\r\n")
     (.flush *out*))
 
-(def map-size 15) ;задаём размер карты
-(def map-cell ".") ;задаём символ клетки карты
-(def border-cell "#") ;задаём границы карты
+(def map-size 30) ;задаём размер карты
+(def player-symbol "\u001b[46m\u001b[36;1mX\u001b[0m")
+
+(def map-cell "\u001b[43m\u001b[33m.\u001b[0m") ;задаём символ клетки карты
+(def border-cell "\u001b[44m\u001b[34m#\u001b[0m") ;задаём границы карты
 (def treasure-symbol "$") ;задаём символ обозначающий сокровище
 
 (def yell-bg "\033[43m") ; жёлтый цвет фона
-(def grey-background "\u001B[48;5;8m") ; Серый цвет фона
+(def grey-background "\u001b[40m") ; Серый цвет фона
 
 (def yellow "\u001b[33m") ; жёлтый цвет текста
-(def green "\u001b[32m") ; жёлтый цвет текста
+(def green "\u001b[32m") ; зелёный цвет текста
 (def red "\u001b[31m") ; красный цвет текста
 
 (def nrm-bg  "\033[0m")  ; вернуть норм цвет
@@ -40,12 +42,12 @@
 (defn print-map-with-player [game-map player-x player-y] ;выводим карту с игроком в консоль
     (doseq [y (range (count game-map))]
         (doseq [x (range (count (first game-map)))]
-            (let [cell (if (and (= x player-x) (= y player-y)) \X (get-in game-map [y x]))] ;хз, почему нужно менять меставми координаты, но иначе дублируется игрок
+            (let [cell (if (and (= x player-x) (= y player-y)) player-symbol (get-in game-map [y x]))] ;хз, почему нужно менять меставми координаты, но иначе дублируется игрок
                 (print cell)))
         (println-win "")))
 
 (defn get-random-empty-cell [game-map] ;получение случайной клетки на карте
-    (let [x (+ 1 (rand-int (inc (- 13 1)))) y (+ 1 (rand-int (inc (- 13 1))))] [x y]))
+    (let [x (+ 1 (rand-int (inc (- (- map-size 2) 1)))) y (+ 1 (rand-int (inc (- (- map-size 2) 1))))] [x y]))
 
 
 (defn place-treasures [game-map treasure-count treasure-symbol]
@@ -62,7 +64,7 @@
 
 (defn place-player [game-map x y] ;функция, которая помещает игрока на переданную клетку
     (println-win (str "Placing player at coordinates [" x "," y "]")) ;для отладки
-    (assoc-in game-map [y x] \X))
+    (assoc-in game-map [y x] player-symbol))
 
 (defn initialize-explored [map-size] ;созаём вспомогательную структуру
     (vec (for [_ (range map-size)] (vec (for [_ (range map-size)] false)))))
@@ -95,20 +97,20 @@
     (println-win (colorize grey-background (str "Balance: " (colorize green (apply str (take player-balance (repeat "$")))))))))
 
 (defn move-player [game-map explored x y dx dy player-balance treasure-symbol] ;перемещение игрока
-    (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map) border-cell "#"]
+    (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map) border-cell "\u001b[44m\u001b[34m#\u001b[0m"]
         (if (or (< new-x 0) (> new-x (dec map-size)) ;проверяем новый х
                 (< new-y 0) (> new-y (dec map-size)) ;проверяем новый y
                 (= (get-in game-map [new-y new-x]) border-cell)) ;проверяем, является ли новая позиция границей
-            (do (println-win "You can't move there! It's a boundary or outside the map.") ;показываем предупреждение
+            (do (println-win (colorize red "You cannot move outside the island until you collect all the treasures \u001b[47m\u001b[32m$\u001b[0m \u001b[31mor defeat all the enemies \u001b[41m\u001b[30;1mX\u001b[0m\u001b[31m! \u001b[0m\n")) ;показываем предупреждение
                 [game-map explored player-balance]) ;возвращаем неизменную карту и структуру открытых клеток
             (let [current-cell (get-in game-map [new-y new-x])]
                 (if (= current-cell treasure-symbol)
                     (do (money-message (str (inc player-balance))) ;уведомляем о пополнении счёта (перевожу ещё и в строку так как нужно для смены цвета)
-                        [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] \X) ;обновляем карту
+                        [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol) ;обновляем карту
                          (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
                          (inc player-balance)]) ;увеличиваем баланс
                     (try
-                        [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] \X) ;пытаемся переместить персонажа
+                        [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol) ;пытаемся переместить персонажа
                          (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
                          player-balance] ;баланс остается прежним
                         (catch IndexOutOfBoundsException e
