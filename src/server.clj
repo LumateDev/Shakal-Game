@@ -35,10 +35,22 @@
 (def player-armor 0) ; начальное колличество очков защиты
 (def player-damage 1) ; начальное колличество очков урона
 
+
+(defn schedule-read-log-and-display []
+  (let [executor (. java.util.concurrent.Executors newScheduledThreadPool 1)]
+    (.scheduleAtFixedRate executor read-log-and-display 0 3 java.util.concurrent.TimeUnit/SECONDS)))
+
 (defn println-win [s] ;функция, которая корректно добавляет символ переноса строк для Windows
     (.write *out* s)
     (.write *out* "\r\n")
     (.flush *out*))
+
+
+(defn recur-and-print-map ; Функция для рекурсивной смены состояния карты сервера, вызывает функцию непосредственной записи текущей карты в файл логов
+        [game-map]
+        (print-map-server game-map)
+    )
+
 
 (defn server-base-fun [input-stream output-stream] ;основная функция, которая делает всё
     (let [initial-game-map (create-empty-map) ;создание пустой карты
@@ -56,7 +68,11 @@
           game-map (place-player game-map-with-legendary-armor player-x player-y) ;спавним игрока
           explored (update-explored (initialize-explored (count game-map)) player-x player-y 1) ;обновляем данные о карте
           player-balance 0] ;обновляем данные о balance
-        (println "Player initialized. Waiting for input...") ;для отладки
+        (println "\u001b[32m!Player initialized. Waiting for input...\u001b[0m") ;для отладки
+
+        (print-map game-map) ; <--- выводим карту на сервере перед binding, иначе внутри binding до сервера не достучатся
+        (schedule-read-log-and-display) ; ВЫЗЫВАЕМ ФУНКЦИЮ, КОТОРАЯ СОЗДАЁТ ОБЪЕКТ ПЛАНИРОВЩИКА ДЛЯ ВЫЗОВА ФУНКЦИИ СЧИТЫВАНИЯ ФАЙЛА КАЖДЫЕ 3 СЕКУНДЫ
+
         (binding [*in* (reader input-stream) *out* (writer output-stream)] ;биндим потоки ввода/вывода
             (welcome-in-game) ; приветствие
 
@@ -117,7 +133,7 @@
                 (print-current-armor player-armor) ; печать надетой брони
                 (print-current-weapon player-damage) ; печать текущего оружия
                 (print-balance player-balance) ; печать баланса перед печатью карты
-                (print "\n") ; визуально отделяем карту от статов  
+                (print "\n") ; визуально отделяем карту от статов
                 (print-map-with-explored game-map explored) ;печать карты
                 (flush)
                 (let [input (read-line)] ;считываем ввод
@@ -129,20 +145,64 @@
                                 (.close output-stream)) ;то выходим (Шерлок?)
                         (= input "w") ;иначе переходим куда-то
                             (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance)))
+                                (if (= new-map game-map) 
+                                    (do
+                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
+                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
+                                        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
+                                    )
+                                    (do
+                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
+                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
+                                        (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance)
+                                    )
+                                )
+                            )
                         (= input "a") 
                             (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance)))
+                                (if (= new-map game-map)
+                                    (do
+                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
+                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
+                                        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
+                                    )
+                                    (do
+                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
+                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
+                                       (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance)
+                                    )
+                                )
+                            )
                         (= input "s") 
                             (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance)))
+                                (if (= new-map game-map) 
+                                    (do
+                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
+                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
+                                        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
+                                    )
+                                    (do
+                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
+                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
+                                       (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance)
+                                    )
+                                )
+                            )
                         (= input "d") 
                             (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol)]
-                                (if (= new-map game-map) (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance) 
-                                    (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance)))
+                                (if (= new-map game-map) 
+                                    (do
+                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
+                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
+                                        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
+                                    )
+                                    (do
+                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
+                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
+                                       (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance)
+                                    )
+                                )
+                            )         
                         :else ;если пользователь не попадает ложкой в рот с первой попытки
                             (do
                                 (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n") ;то предупреждение
