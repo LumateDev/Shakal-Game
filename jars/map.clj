@@ -97,6 +97,11 @@
             [(+ x dx) (+ y dy)])))
 
 
+(defn print-user-name [user-name] ; Выводим текущее имя пользователя
+    (println-win (colorize purple (str user-name)))
+)
+
+
 (defn print-lives [player-lives]
   (println-win (colorize grey-background (str "HP: " (colorize red (apply str (take player-lives (repeat  "<3 ")))))))) ; функция отображения жизней ♥
 
@@ -114,7 +119,7 @@
 (defn print-current-armor [player-armor]  ; функция отображения надетой брони
     (cond 
         (= player-armor 0)
-            (println-win (colorize grey-background (str "Current armor: \u001b[36mОтсутствует\u001b[0m")))
+            (println-win (colorize grey-background (str "Current armor: \u001b[36mAbsent\u001b[0m")))
         (= player-armor 1)    
             (println-win (colorize grey-background (str "Current armor: " common-armor-symbol)))
         (= player-armor 2)
@@ -122,7 +127,7 @@
         (= player-armor 3)
             (println-win (colorize grey-background (str "Current armor: " legendary-armor-symbol)))
         :else
-            (println-win (colorize grey-background (str "Current armor: \u001b[36mОтсутствует\u001b[0m")))   
+            (println-win (colorize grey-background (str "Current armor: \u001b[36mAbsent\u001b[0m")))   
     )
 )
 
@@ -133,7 +138,7 @@
 (defn print-current-weapon [player-damage]  ; функция отображения текущего оружия
     (cond 
         (= player-damage 1)
-            (println-win (colorize grey-background (str "Current weapon: \u001b[35mКулаки\u001b[0m")))
+            (println-win (colorize grey-background (str "Current weapon: \u001b[35mFists\u001b[0m")))
         (= player-damage 2)    
             (println-win (colorize grey-background (str "Current weapon: " common-weapons-symbol)))
         (= player-damage 3)
@@ -141,7 +146,7 @@
         (= player-damage 4)
             (println-win (colorize grey-background (str "Current weapon: " legendary-weapons-symbol)))
         :else
-            (println-win (colorize grey-background (str "Current weapon: \u001b[35mКулаки\u001b[0m")))        
+            (println-win (colorize grey-background (str "Current weapon: \u001b[35mFists\u001b[0m")))        
     )
 )
 
