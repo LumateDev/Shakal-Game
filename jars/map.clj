@@ -4,6 +4,8 @@
     (.write *out* "\r\n")
     (.flush *out*))
 
+(def log-writer (java.io.FileWriter. "server.log"))  ; Создаём обьект записи состояния карты в файл, для дальнейшего вывода общего состояния на сервер 
+
 (def map-size 40) ;задаём размер карты
 (def player-symbol "\u001b[46m\u001b[36;1mX\u001b[0m") ; это игрок
 (def enemies-symbol "\u001b[41m\u001b[30;1mX\u001b[0m") ; это враги
@@ -53,6 +55,22 @@
 
 (defn print-map [game-map] ;выводим карту в консоль
     (doseq [row game-map] (println-win (apply str row))))
+
+(defn print-map-server [game-map] 
+    (binding [*out* log-writer]
+        (doseq [row game-map] (println (apply str row)))
+        (.flush *out*))) ; после каждого вызова нужно очищать поток, чтобы гарантировать, что данные таки занеслись в лог
+
+(defn clear-log-file [] ; Функция очистки файла после считывания последний инфромации
+  (let [writer (java.io.FileWriter. "server.log")]
+    (.write writer "")
+    (.flush writer)))
+
+(defn read-log-and-display [] ; ФУНКЦИЯ ВЫЗЫВАЕМАЯ ПЛАНИРОВЩИКОМ РАЗ В 3 СЕКУНДЫ, СЧИТЫВАЮЩАЯ ИЗ ЛОГОВ ТЕКУЩЗЕЕ СОСТОЯНИЕ КАРТЫ, И ОТОБРАЖАЮЩАЯ ЕГО В КОНСОЛИ СЕРВЕРА
+  (let [log-content (slurp "server.log")]
+    (println log-content)
+    (clear-log-file)))
+
 
 (defn print-map-with-player [game-map player-x player-y] ;выводим карту с игроком в консоль
     (doseq [y (range (count game-map))]
