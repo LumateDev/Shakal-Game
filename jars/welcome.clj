@@ -20,4 +20,20 @@
     (println-win "\t\u001b[47m\u001b[30;1m^\u001b[0m - This is a common armor (+1 armor)")
     (println-win "\t\u001b[42m\u001b[37;1m)\u001b[0m - This is a rare armor (+2 armor)")
     (println-win "\t\u001b[45m\u001b[33;1m]\u001b[0m - This is a legendary armor (+3 armor)")
-    (println-win "\n")) ; Визуально отделил
+    (println-win "\n") ; Визуально отделил
+) 
+
+
+;; (defn user-name-reader [user-name]  ; Функция для получения имени пользователя
+;;     (println-win "Input user naem: ")
+;;     (let [input (read-line)]
+;;         (:= user-name input)
+;;     )
+;;     [user-name]
+;; )
+
+(defn user-name-reader [user-name] ; Более крутая через Atom функция для получения имени пользователя
+      (println "Input user name: ")
+      (reset! user-name (read-line))
+      @user-name
+)
