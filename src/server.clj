@@ -12,6 +12,8 @@
 (def exit-keyword "exit") ;кодовое слово для отключения с сервера
 (def game-map (create-empty-map)) ;создаём пустую карту
 
+(def user-name (atom nil))
+
 (def treasure-symbol "\u001b[47m\u001b[32m$\u001b[0m") ;задаём символ обозначающий сокровище
 (def treasure-count 10) ;задаём количество сокровищы
 
@@ -56,7 +58,9 @@
           player-balance 0] ;обновляем данные о balance
         (println "Player initialized. Waiting for input...") ;для отладки
         (binding [*in* (reader input-stream) *out* (writer output-stream)] ;биндим потоки ввода/вывода
-            (welcome-in-game) ;приветствие
+            (welcome-in-game) ; приветствие
+
+            (user-name-reader user-name) ; Запрашиваем ник пользователя
 
             ;; Я ТАК И НЕ СМОГ СДЕЛАТЬ ЗАДЕРЖКУ В 3 СЕКУНДЫ ДЛЯ ПРОЧТЕНИЯ ПАМЯТКИ ИГРОКА В НАЧАЛЕ, МОЖЕТ КТО СМОЖЕТ РАЗОБРАТЬСЯ
             ;; ЧЕКНИТЕ ИМПОРТЫ ЗАКОМЕНЧЕНЫЕ СВЕРХУ ЕЩЁ ЕСЛИ ПРОБОВАТЬ БУДЕТЕ
@@ -102,6 +106,8 @@
                    player-armor player-armor
                    player-damage player-damage
                    player-balance player-balance] ; новая использующая имя старой
+                (print "NICK: ")
+                (print-user-name @user-name)   
                 (println-win "\u001b[32;1mYour stats:\u001b[0m")
                 (print-lives player-lives) ; печать HP перед печатью карты
                 (print-armor player-armor) ; печать очков брони перед печатью карты
