@@ -7,7 +7,7 @@
                            initialize-explored update-explored move-player print-map-with-explored place-treasures start-game]]) ;импортируем функции для работы с картой
     ; (:import [java.util Timer TimerTask])
 )
-
+(def connections (atom []))
 (def port 5555) ;будем подключаться к серверу по порту 5555
 (def exit-keyword "exit") ;кодовое слово для отключения с сервера
 (def game-map (create-empty-map)) ;создаём пустую карту
@@ -36,6 +36,9 @@
 (def player-damage 1) ; начальное колличество очков урона
 
 
+(def game-state (atom {:players {} :game-started? false}))
+(def max-players 6)
+
 (defn schedule-read-log-and-display []
   (let [executor (. java.util.concurrent.Executors newScheduledThreadPool 1)]
     (.scheduleAtFixedRate executor read-log-and-display 0 3 java.util.concurrent.TimeUnit/SECONDS)))
@@ -52,6 +55,7 @@
     )
 
 
+
 (defn game-loop [game-map explored player-x player-y player-lives player-armor player-damage player-balance output-stream]
   (loop [game-map game-map
          explored explored
@@ -62,6 +66,7 @@
          player-damage player-damage
          player-balance player-balance]
     (print "NICK: ")
+    (print @connections)
     (print-user-name @user-name)   
     (println-win "\u001b[32;1mYour stats:\u001b[0m")
     (print-lives player-lives)
@@ -135,22 +140,29 @@
 
 ;повторение всей красоты
 
+(def game-map
+  (let [initial-game-map (create-empty-map)
+        game-map-with-treasures (place-treasures initial-game-map treasure-count treasure-symbol)
+
+        game-map-with-common-weapons (place-treasures game-map-with-treasures common-weapons-count common-weapons-symbol)
+        game-map-with-rare-weapons (place-treasures game-map-with-common-weapons rare-weapons-count rare-weapons-symbol)
+        game-map-with-legendary-weapons (place-treasures game-map-with-rare-weapons legendary-weapons-count legendary-weapons-symbol)
+
+        game-map-with-common-armor (place-treasures game-map-with-legendary-weapons common-armor-count common-armor-symbol)
+        game-map-with-rare-armor (place-treasures game-map-with-common-armor rare-armor-count rare-armor-symbol)
+        game-map-with-legendary-armor (place-treasures game-map-with-rare-armor legendary-armor-count legendary-armor-symbol)
+    ]
+    game-map-with-legendary-armor 
+  )
+)
+
+
+
 (defn server-base-fun [input-stream output-stream]
-    (let [initial-game-map (create-empty-map) ;создание пустой карты
-          game-map-with-treasures (place-treasures initial-game-map treasure-count treasure-symbol) ;разместить сокровища на карте
-
-          game-map-with-common-weapons (place-treasures game-map-with-treasures common-weapons-count common-weapons-symbol) ; разместить обычные оружия на карте
-          game-map-with-rare-weapons (place-treasures game-map-with-common-weapons rare-weapons-count rare-weapons-symbol) ; разместить редкие оружия на карте
-          game-map-with-legendary-weapons (place-treasures game-map-with-rare-weapons legendary-weapons-count legendary-weapons-symbol) ; разместить легендарные оружия на карте
-
-          game-map-with-common-armor (place-treasures game-map-with-legendary-weapons common-armor-count common-armor-symbol) ; разместить обычныую броню на карте
-          game-map-with-rare-armor (place-treasures game-map-with-common-armor rare-armor-count rare-armor-symbol) ; разместить редкую броню на карте
-          game-map-with-legendary-armor (place-treasures  game-map-with-rare-armor legendary-armor-count legendary-armor-symbol) ; разместить легендарную броню на карте  
-
-          [player-x player-y] (get-random-empty-cell game-map-with-legendary-armor) ;получаем клетку для игрока
-          game-map (place-player game-map-with-legendary-armor player-x player-y) ;спавним игрока
-          explored (update-explored (initialize-explored (count game-map)) player-x player-y 1) ;обновляем данные о карте
-          player-balance 0] ;обновляем данные о balance
+   (let [[player-x player-y] (get-random-empty-cell game-map) ;получаем клетку для игрока
+         game-map (place-player game-map player-x player-y) ;спавним игрока
+         explored (update-explored (initialize-explored (count game-map)) player-x player-y 1)  ;обновляем данные о карте
+         player-balance 0]
         (println "\u001b[32m!Player initialized. Waiting for input...\u001b[0m") ;для отладки
 
         (print-map game-map) ; <--- выводим карту на сервере перед binding, иначе внутри binding до сервера не достучатся
@@ -168,4 +180,8 @@
 
 
 
-(def server (create-server port server-base-fun)) ;запуск сервера на порту
+(defn handle-connection [input-stream output-stream]
+   (swap! connections conj {:input-stream input-stream :output-stream output-stream}) ;добавляем новое соединение в список
+  (server-base-fun input-stream output-stream))
+
+(def server (create-server port handle-connection)) 
