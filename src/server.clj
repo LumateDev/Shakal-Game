@@ -9,6 +9,12 @@
 )
 (def connections (atom []))
 (def port 5555) ;будем подключаться к серверу по порту 5555
+(def max-layers 2)
+
+(def game-state (atom { :status false }))
+
+
+
 (def exit-keyword "exit") ;кодовое слово для отключения с сервера
 (def game-map (create-empty-map)) ;создаём пустую карту
 
@@ -36,8 +42,8 @@
 (def player-damage 1) ; начальное колличество очков урона
 
 
-(def game-state (atom {:players {} :game-started? false}))
-(def max-players 6)
+
+(def max-players 2)
 
 (defn schedule-read-log-and-display []
   (let [executor (. java.util.concurrent.Executors newScheduledThreadPool 1)]
@@ -54,6 +60,23 @@
         (print-map-server game-map)
     )
 
+(def players (atom [])) 
+
+(defn add-player [player-info]
+  (swap! players conj player-info) ; 1. Добавление нового игрока в список игроков.
+  (println "Current players:" @players) ; 2. Вывод текущего списка игроков в консоль.
+  (let [player-id (:id player-info)] ; 3. Определение идентификатора нового игрока.
+    (swap! connections conj player-info)))
+    
+
+(defn find-player-by-name [players name]
+  (first (filter #(= (:name %) name) players)))
+
+
+()
+
+;; (defn print-players [players]
+;;   (println "Current players:" @players))
 
 
 (defn game-loop [game-map explored player-x player-y player-lives player-armor player-damage player-balance output-stream]
@@ -67,6 +90,7 @@
          player-balance player-balance]
     (print "NICK: ")
     (print @connections)
+    (println "Current players:" @players)
     (print-user-name @user-name)   
     (println-win "\u001b[32;1mYour stats:\u001b[0m")
     (print-lives player-lives)
@@ -136,6 +160,7 @@
         (do
           (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n")
           (flush)
+          
           (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))))))
 
 ;повторение всей красоты
@@ -156,10 +181,17 @@
   )
 )
 
+(defn wait-for-players []
+  (while (< (count @players) max-players)
+    (println (str "Waiting for players...  " max-players))
+    (Thread/sleep 1000))
+  (println "All players are ready! The game is starting..."))
 
 
 (defn server-base-fun [input-stream output-stream]
    (let [[player-x player-y] (get-random-empty-cell game-map) ;получаем клетку для игрока
+
+         
          game-map (place-player game-map player-x player-y) ;спавним игрока
          explored (update-explored (initialize-explored (count game-map)) player-x player-y 1)  ;обновляем данные о карте
          player-balance 0]
@@ -171,17 +203,21 @@
         (binding [*in* (reader input-stream) *out* (writer output-stream)] ;биндим потоки ввода/вывода
         (welcome-in-game)
         (user-name-reader user-name)
+        
       
       ;; Комментарий о возможности вызова Thread/sleep для задержки
       ;; (Thread/sleep 3000)
-
+        (add-player {:player-x player-x :player-y player-y :lives player-lives :armor player-armor :damage player-damage :balance player-balance :name @user-name})
+        (println "current player: ")
+        (println find-player-by-name @players @user-name)
         (flush)
+        (wait-for-players)
         (game-loop game-map explored player-x player-y player-lives player-armor player-damage player-balance output-stream))))
 
 
 
 (defn handle-connection [input-stream output-stream]
-   (swap! connections conj {:input-stream input-stream :output-stream output-stream}) ;добавляем новое соединение в список
+   (swap! connections conj {:input-stream input-stream :output-stream output-stream }) ;добавляем новое соединение в список
   (server-base-fun input-stream output-stream))
 
 (def server (create-server port handle-connection)) 
