@@ -52,7 +52,90 @@
     )
 
 
-(defn server-base-fun [input-stream output-stream] ;основная функция, которая делает всё
+(defn game-loop [game-map explored player-x player-y player-lives player-armor player-damage player-balance output-stream]
+  (loop [game-map game-map
+         explored explored
+         player-x player-x
+         player-y player-y
+         player-lives player-lives
+         player-armor player-armor
+         player-damage player-damage
+         player-balance player-balance]
+    (print "NICK: ")
+    (print-user-name @user-name)   
+    (println-win "\u001b[32;1mYour stats:\u001b[0m")
+    (print-lives player-lives)
+    (print-armor player-armor)
+    (print-damage player-damage)
+    (print "\n")
+    (println-win "\u001b[33;1mYour inventory:\u001b[0m")
+    (print-current-armor player-armor)
+    (print-current-weapon player-damage)
+    (print-balance player-balance)
+    (print "\n")
+    (print-map-with-explored game-map explored)
+    (flush)
+    (let [input (read-line)]
+      (cond
+        (= input "exit")
+        (do
+          (println-win "\u001b[32mThank you for playing the Jackal Game!\u001b[0m\n")
+          (flush)
+          (.close output-stream))
+
+        (= input "w")
+        (let [[new-map new-explored new-balance new-armor new-damage]
+              (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
+          (if (= new-map game-map)
+            (do
+              (recur-and-print-map new-map)
+              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))
+            (do
+              (recur-and-print-map new-map)
+              (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance ))))
+
+        (= input "a")
+        (let [[new-map new-explored new-balance new-armor new-damage]
+              (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol)]
+          (if (= new-map game-map)
+            (do
+              (recur-and-print-map new-map)
+              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))
+            (do
+              (recur-and-print-map new-map)
+              (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance ))))
+
+        (= input "s")
+        (let [[new-map new-explored new-balance new-armor new-damage]
+              (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol)]
+          (if (= new-map game-map)
+            (do
+              (recur-and-print-map new-map)
+              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))
+            (do
+              (recur-and-print-map new-map)
+              (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance ))))
+
+        (= input "d")
+        (let [[new-map new-explored new-balance new-armor new-damage]
+              (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol)]
+          (if (= new-map game-map)
+            (do
+              (recur-and-print-map new-map)
+              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))
+            (do
+              (recur-and-print-map new-map)
+              (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance ))))
+
+        :else
+        (do
+          (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n")
+          (flush)
+          (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))))))
+
+;повторение всей красоты
+
+(defn server-base-fun [input-stream output-stream]
     (let [initial-game-map (create-empty-map) ;создание пустой карты
           game-map-with-treasures (place-treasures initial-game-map treasure-count treasure-symbol) ;разместить сокровища на карте
 
@@ -74,139 +157,15 @@
         (schedule-read-log-and-display) ; ВЫЗЫВАЕМ ФУНКЦИЮ, КОТОРАЯ СОЗДАЁТ ОБЪЕКТ ПЛАНИРОВЩИКА ДЛЯ ВЫЗОВА ФУНКЦИИ СЧИТЫВАНИЯ ФАЙЛА КАЖДЫЕ 3 СЕКУНДЫ
 
         (binding [*in* (reader input-stream) *out* (writer output-stream)] ;биндим потоки ввода/вывода
-            (welcome-in-game) ; приветствие
+        (welcome-in-game)
+        (user-name-reader user-name)
+      
+      ;; Комментарий о возможности вызова Thread/sleep для задержки
+      ;; (Thread/sleep 3000)
 
-            (user-name-reader user-name) ; Запрашиваем ник пользователя
-
-            ;; Я ТАК И НЕ СМОГ СДЕЛАТЬ ЗАДЕРЖКУ В 3 СЕКУНДЫ ДЛЯ ПРОЧТЕНИЯ ПАМЯТКИ ИГРОКА В НАЧАЛЕ, МОЖЕТ КТО СМОЖЕТ РАЗОБРАТЬСЯ
-            ;; ЧЕКНИТЕ ИМПОРТЫ ЗАКОМЕНЧЕНЫЕ СВЕРХУ ЕЩЁ ЕСЛИ ПРОБОВАТЬ БУДЕТЕ
-
-            ;; (Thread/sleep 3000)
-
-            ;; (java.util.Timer.) ; создаете новый таймер
-            ;; (.schedule
-            ;;     ( java.util.TimerTask. 
-            ;;         {
-            ;;         :run #(do (flush) )
-            ;;         }
-            ;;     )
-            ;;     3000 ; устанавливаете задержку в миллисекундах
-            ;; ) ; ожидание 3 секунды для прочтения информации
-
-            ;; (let [task (proxy [java.util.TimerTask] [] (run [] (flush)))
-            ;;     timer (java.util.Timer.)
-            ;;     delay 3000]
-            ;; (.schedule timer task (long delay)))
-
-            ;; (let [timer (Timer.) 
-            ;;     task (proxy [TimerTask] []
-            ;;         (run []
-            ;;             (println "Waiting for 3 seconds...")
-            ;;             (Thread/sleep 3000)))]
-            ;; (.schedule timer task 0))
-
-            ;; (let [task (proxy [TimerTask] [] (run [] (Thread/sleep 3000)))  
-            ;;     timer (Timer.)]
-            ;; (.schedule timer task 0))
-
-            ;; (println "Waiting for 3 seconds...")
-            ;; (Thread/sleep 3000)
+        (flush)
+        (game-loop game-map explored player-x player-y player-lives player-armor player-damage player-balance output-stream))))
 
 
-            (flush) ;очистка буфера
-            (loop [game-map game-map
-                   explored explored
-                   player-x player-x
-                   player-y player-y
-                   player-lives player-lives
-                   player-armor player-armor
-                   player-damage player-damage
-                   player-balance player-balance] ; новая использующая имя старой
-                (print "NICK: ")
-                (print-user-name @user-name)   
-                (println-win "\u001b[32;1mYour stats:\u001b[0m")
-                (print-lives player-lives) ; печать HP перед печатью карты
-                (print-armor player-armor) ; печать очков брони перед печатью карты
-                (print-damage player-damage) ; печать очков урона перед печатью карты
-                (print "\n")
-                (println-win "\u001b[33;1mYour inventory:\u001b[0m")
-                (print-current-armor player-armor) ; печать надетой брони
-                (print-current-weapon player-damage) ; печать текущего оружия
-                (print-balance player-balance) ; печать баланса перед печатью карты
-                (print "\n") ; визуально отделяем карту от статов
-                (print-map-with-explored game-map explored) ;печать карты
-                (flush) ;очистка буфера
-                (let [input (read-line)] ;считываем ввод
-                    (cond
-                        (= input "exit") ;если пытаемся выйти
-                            (do
-                                (println-win "\u001b[32mThank you for playing the Jackal Game!\u001b[0m\n")
-                                (flush) ;очистка буфера
-                                (.close output-stream)) ;то выходим (Шерлок?)
-                        (= input "w") ;иначе переходим куда-то
-                            (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
-                                (if (= new-map game-map) 
-                                    (do
-                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                                        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    )
-                                    (do
-                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                                        (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance)
-                                    )
-                                )
-                            )
-                        (= input "a") 
-                            (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol)]
-                                (if (= new-map game-map)
-                                    (do
-                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                                        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    )
-                                    (do
-                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                                       (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance)
-                                    )
-                                )
-                            )
-                        (= input "s") 
-                            (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol)]
-                                (if (= new-map game-map) 
-                                    (do
-                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                                        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    )
-                                    (do
-                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                                       (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance)
-                                    )
-                                )
-                            )
-                        (= input "d") 
-                            (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol)]
-                                (if (= new-map game-map) 
-                                    (do
-                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                                        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)
-                                    )
-                                    (do
-                                        (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-                                        ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                                       (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance)
-                                    )
-                                )
-                            )         
-                        :else ;если пользователь не попадает ложкой в рот с первой попытки
-                            (do
-                                (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n") ;то предупреждение
-                                (flush)
-                                (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance)))))))) ;повторение всей красоты
 
 (def server (create-server port server-base-fun)) ;запуск сервера на порту
