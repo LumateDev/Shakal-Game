@@ -135,13 +135,13 @@
                 (print-balance player-balance) ; печать баланса перед печатью карты
                 (print "\n") ; визуально отделяем карту от статов
                 (print-map-with-explored game-map explored) ;печать карты
-                (flush)
+                (flush) ;очистка буфера
                 (let [input (read-line)] ;считываем ввод
                     (cond
                         (= input "exit") ;если пытаемся выйти
                             (do
                                 (println-win "\u001b[32mThank you for playing the Jackal Game!\u001b[0m\n")
-                                (flush)
+                                (flush) ;очистка буфера
                                 (.close output-stream)) ;то выходим (Шерлок?)
                         (= input "w") ;иначе переходим куда-то
                             (let [[new-map new-explored new-balance new-armor new-damage] (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
