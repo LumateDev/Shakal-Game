@@ -4,14 +4,15 @@
     (:use [clojure.contrib server-socket duck-streams]) ;server-socket работает с сокетами, а duck-streams работает с потоками ввода-вывода
     (:require [welcome :refer [welcome-in-game]]) ;импортируем функцию-приветствие
     (:require [map :refer [create-empty-map print-map get-random-empty-cell get-static-empty-cell place-player
-                           initialize-explored update-explored move-player print-map-with-explored place-treasures start-game]]) ;импортируем функции для работы с картой
+                           initialize-explored update-explored move-player print-map-with-explored place-treasures place-players start-game]]) ;импортируем функции для работы с картой
     ; (:import [java.util Timer TimerTask])
 )
-(def connections (atom []))
-(def port 5555) ;будем подключаться к серверу по порту 5555
-(def max-players 2)
 
-(def game-state (atom { :status false }))
+;здесь объявляются все константы мультиплеера
+(def connections (atom []))
+(def port 5555) 
+(def max-players 2)
+(def players (atom [])) 
 (def current-turn (atom nil))
 (def turn-queue (atom []))
 
@@ -41,9 +42,8 @@
 (def player-lives 3) ; начальное колличество жизней
 (def player-armor 0) ; начальное колличество очков защиты
 (def player-damage 1) ; начальное колличество очков урона
-
-
-
+(def player-symbol "\u001b[46m\u001b[36;1mX\u001b[0m") ; это игрок
+(def enemies-symbol "\u001b[41m\u001b[30;1mX\u001b[0m") ; это враги
 
 
 (defn schedule-read-log-and-display []
@@ -66,29 +66,31 @@
 
 
 
-(def players (atom [])) 
-
+;добавляем плеера к вектору всех игроков
 (defn add-player-to-players [player]
   (swap! players conj player) ; 1. Добавление нового игрока в список игроков.
   (println "Current players:" @players) ; 2. Вывод текущего списка игроков в консоль.
 )
 
+;ищем игрока по имени
 (defn find-player-by-name [players name]
   (first (filter #(= (:name %) name) players)))
 
 
 
 
-
+;добавляем в массив очереди имена
 (defn add-player-to-queue [player]
   (swap! turn-queue conj (get player :name) ))
 
+;зацикливаем очередь и делаем шаг вперед
 (defn next-player []
   (let [current (first @turn-queue)
         remaining (rest @turn-queue)]
     (reset! current-turn current)
     (reset! turn-queue (conj (vec remaining) current))))
 
+;проверка переменной текущий ход с именем игрока
 (defn current-player-turn? [name]
    (=  @current-turn name))
 
@@ -96,21 +98,15 @@
 
 
 
-(defn print-turn [player]
-  (println (str "Current turn: " (:name player))))
 
-(defn print-turn-queue []
-  (println (str "Current turn queue: " @turn-queue )))
-
-
-
+;добавляем игрока сразу в очередь и в стек игроков
 (defn add-player [player]
   (add-player-to-players player)
   (add-player-to-queue player)
 
 )
 
-
+;ожидает подключения всех игроков
 (defn wait-for-players []
   (while (< (count @players) max-players)
     (println (str "Waiting for players...  " max-players))
@@ -118,7 +114,7 @@
   (println "All players are ready! The game is starting..."))
 
 
-
+; ищет игрока по имени и обновляет его данные
 (defn update-player-by-name [players-atom player-name update-fn]
   (swap! players-atom
          (fn [players]
@@ -131,7 +127,7 @@
 
 
 
-
+; частные случай обновления. обновляет только координаты
 (defn update-player-coordinates [players-atom player-name new-x new-y]
   (update-player-by-name players-atom player-name
                          (fn [player]
@@ -154,10 +150,9 @@
     
     (print "NICK: ")
     (print @turn-queue)
-    (if (current-player-turn? name)(do
-    (update-player-coordinates players name player-x player-y)
-    ;; (print-turn @current-turn)
-    (print-turn-queue)
+
+    (if (current-player-turn? name)(do ;если ход текущего игрока
+    (update-player-coordinates players name player-x player-y)  ;обновляем координаты игрока со значениями, которые пришли на прошлой итерации
     (print @players) 
     (println-win "\u001b[32;1mYour stats:\u001b[0m")
     (print-lives player-lives)
@@ -241,7 +236,7 @@
           (flush)
           
           (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))
- (do
+ (do ;если не ход текущего игрока
         
         (println "Not your turn")
         (Thread/sleep 1000)
@@ -260,10 +255,11 @@
         game-map-with-common-armor (place-treasures game-map-with-legendary-weapons common-armor-count common-armor-symbol)
         game-map-with-rare-armor (place-treasures game-map-with-common-armor rare-armor-count rare-armor-symbol)
         game-map-with-legendary-armor (place-treasures game-map-with-rare-armor legendary-armor-count legendary-armor-symbol)
-        ; game-map-with-enemy (get-map-with-enemy game-map-with-legendary-armor @players)
+
+        game-map-with-enemy (place-players game-map-with-legendary-armor @players enemies-symbol) ;должна создавать игроков, но не работает
     ]
-    game-map-with-legendary-armor 
-    ; game-map-with-enemy
+    ;game-map-with-legendary-armor 
+    game-map-with-enemy
   )
 )
 
@@ -283,14 +279,10 @@
         (binding [*in* (reader input-stream) *out* (writer output-stream)] ;биндим потоки ввода/вывода
         (welcome-in-game)
         (user-name-reader user-name)
-      ;; Комментарий о возможности вызова Thread/sleep для задержки
-      ;; (Thread/sleep 3000)
-        (add-player {:player-x player-x :player-y player-y :explored explored :player-lives player-lives :player-armor player-armor :player-damage player-damage :player-balance player-balance :name @user-name})
-        (println "current player: ")
-        (println find-player-by-name @players @user-name)
-        (let [player (find-player-by-name @players @user-name)] player
+        (add-player {:player-x player-x :player-y player-y :explored explored :player-lives player-lives :player-armor player-armor :player-damage player-damage :player-balance player-balance :name @user-name}) ;добавляем игрока
+        (let [player (find-player-by-name @players @user-name)] player ; получаем текущего игрока
         (flush)
-        (wait-for-players)
+        (wait-for-players) ; ждем пока все игроки подключены
         (game-loop game-map player output-stream)))))
 
 
