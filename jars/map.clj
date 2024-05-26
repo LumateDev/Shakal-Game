@@ -1,8 +1,8 @@
 
 (defn println-win [s] ;функция, которая корректно добавляет символ переноса строк для Windows
-    ;; (.write *out* s)
-    ;; (.write *out* "\r\n")
-    ;; (.flush *out*))
+    (.write *out* s)
+    (.write *out* "\r\n")
+    (.flush *out*)
 )
 
 (def log-writer (java.io.FileWriter. "server.log"))  ; Создаём обьект записи состояния карты в файл, для дальнейшего вывода общего состояния на сервер 
