@@ -4,8 +4,6 @@
     (.flush *out*)
 )
 
-(defn decrement-player-lives [player]
-  (assoc player :player-lives (dec (:player-lives player))))
 
 
 (defn same-position? [player1 player2]
@@ -143,8 +141,11 @@
 (defn print-lives [player-lives]
   (println-win (colorize grey-background (str "HP: " (colorize red (apply str (take player-lives (repeat  "<3 ")))))))) ; функция отображения жизней ♥
 
-(defn decrease-lives [player-lives]
-  (dec player-lives))  ; функция отнимания жизней (пока нигде не вызывается, после может вызыватся в сражениях, или при наступании на ловушки)
+;Отнимание здоровья 
+(defn decrease-lives [player]
+  (let [updated-lives (max 0 (dec (:player-lives player)))]
+    (println-win (str "Player " (:name player) " lives decreased to " updated-lives))
+    (assoc player :player-lives updated-lives)))
 
 (defn print-armor [player-armor]  ; функция отображения очков брони
     (if (= player-armor 0)
@@ -232,7 +233,7 @@
         (if occupying-player
           (do ; Обработка коллизии с другим игроком
             (println-win (str "You have attacked " (:name occupying-player) "!"))
-            (update-player-by-name players (:name occupying-player) decrement-player-lives) ; уменьшаем жизни атакуемому игроку
+            (update-player-by-name players (:name occupying-player) decrease-lives) ; уменьшаем жизни атакуемому игроку
             [game-map explored player-balance player-armor player-damage])
           (cond ; if поменял на cond он работает с большим колличеством условий
 
