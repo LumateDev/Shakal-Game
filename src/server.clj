@@ -181,11 +181,11 @@
               (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
           (if (= new-map game-map)
             (do
-              (next-player)
+              (next-player) ; передает ход
               (recur-and-print-map new-map)
               (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
-              (next-player)
+              (next-player); передает ход
               (recur-and-print-map new-map)
               (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance name))))
 
@@ -194,13 +194,13 @@
               (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol)]
           (if (= new-map game-map)
             (do
-              (next-player)
+              (next-player); передает ход
               (recur-and-print-map new-map)
                (update-player-coordinates players name (- player-x 1) (+ player-y 0))
                               
               (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
-              (next-player)
+              (next-player); передает ход
               (recur-and-print-map new-map)
               (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance name))))
 
@@ -209,11 +209,11 @@
               (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol)]
           (if (= new-map game-map)
             (do
-              (next-player)
+              (next-player); передает ход
               (recur-and-print-map new-map)
               (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
-              (next-player)
+              (next-player); передает ход
               (recur-and-print-map new-map)
               (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance name))))
 
@@ -222,11 +222,11 @@
               (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol)]
           (if (= new-map game-map)
             (do
-              (next-player)
+              (next-player); передает ход
               (recur-and-print-map new-map)
               (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
-              (next-player)
+              (next-player); передает ход
               (recur-and-print-map new-map)
               (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance name))))
 
