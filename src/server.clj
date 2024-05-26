@@ -115,10 +115,23 @@
              players))))
 
 ; частные случай обновления. обновляет только координаты
-(defn update-player-coordinates [players-atom player-name new-x new-y]
+(defn update-player [players-atom player-name new-x new-y explored player-lives player-armor player-damage player-balance]
   (update-player-by-name players-atom player-name
                          (fn [player]
-                           (assoc player :player-x new-x :player-y new-y))))
+                           (assoc player :player-x new-x :player-y new-y :explored explored :player-lives player-lives :player-armor player-armor :player-damage player-damage :player-balance player-balance))))
+
+
+(defn update-game-map-with-players [game-map players player-symbol]
+  (reduce (fn [m player]
+            (let [{:keys [player-x player-y]} player]
+              (assoc-in m [player-y player-x] player-symbol)))
+          game-map
+          players))
+
+
+
+
+
 
 (defn game-loop [game-map player output-stream]
   (let [{:keys [player-x player-y explored player-lives player-armor player-damage player-balance name]} player]
@@ -134,7 +147,7 @@
          name name]
     (println-win (str "NICK: " name)) ; Имя пользхователя текущего потока
     (println-win (str "Current queue: " @turn-queue)) ; Очередь ходов
-    (update-player-coordinates players name player-x player-y)  ;обновляем координаты игрока со значениями, которые пришли на прошлой итерации
+    (update-player players name player-x player-y explored player-lives player-armor player-damage player-balance)  ;обновляем координаты игрока со значениями, которые пришли на прошлой итерации
     ; (print @players) 
     (println-win "\u001b[32;1mYour stats:\u001b[0m")
     (print-lives player-lives)
@@ -146,7 +159,8 @@
     (print-current-weapon player-damage)
     (print-balance player-balance)
     (print "\n")
-    (print-map-with-explored game-map explored)
+    (let [game-map-with-players (update-game-map-with-players game-map @players player-symbol)]
+    (print-map-with-explored game-map-with-players explored)
     (flush)
     (if (current-player-turn? name)(do ;если ход текущего игрока
     (println-win "It's your turn now:")
@@ -179,7 +193,6 @@
               (next-player); передает ход
               (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
               ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-               (update-player-coordinates players name (- player-x 1) (+ player-y 0))
                               
               (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
@@ -224,7 +237,7 @@
         (println-win "Not your turn!")
         (update-thread) ; Вызываем тормозок (так как у меня не работаю потоки то вот таой вариант, если работают потоки, коммитте это и откоммитте следующую строку)
         ; (Thread/sleep 1000)
-        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))))))
+        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))))
 ;повторение всей красоты
 
 (def game-map
