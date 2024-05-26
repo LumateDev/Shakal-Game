@@ -94,6 +94,15 @@
           (recur (assoc-in current-map [y x] treasure-symbol) (dec treasures-left))
           (recur current-map treasures-left))))))
 
+;; (defn place-enemy [game-map  maxplayers enemy-symbol]
+;;   (loop [current-map game-map, players-left maxplayers]
+;;     (if (zero? maxplayers)
+;;       current-map
+;;       (let [[x y] (get-random-empty-cell current-map)]
+;;         (if (= (get-in current-map [y x]) map-cell)
+;;           (recur (assoc-in current-map [y x] treasure-symbol) (dec players-left))
+;;           (recur current-map players-left))))))
+
 
 (defn get-static-empty-cell [game-map] [0 0]) ;получения статичной клетки на карте
 

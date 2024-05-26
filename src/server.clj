@@ -9,7 +9,7 @@
 )
 (def connections (atom []))
 (def port 5555) ;будем подключаться к серверу по порту 5555
-(def max-players 1)
+(def max-players 2)
 
 (def game-state (atom { :status false }))
 (def current-turn (atom nil))
@@ -81,7 +81,7 @@
 
 
 (defn add-player-to-queue [player]
-  (swap! turn-queue conj player))
+  (swap! turn-queue conj (get player :name) ))
 
 (defn next-player []
   (let [current (first @turn-queue)
@@ -90,7 +90,7 @@
     (reset! turn-queue (conj (vec remaining) current))))
 
 (defn current-player-turn? [name]
-   (= (:name @current-turn) name))
+   (=  @current-turn name))
 
 
 
@@ -153,6 +153,7 @@
          name name]
     
     (print "NICK: ")
+    (print @turn-queue)
     (if (current-player-turn? name)(do
     (update-player-coordinates players name player-x player-y)
     ;; (print-turn @current-turn)
