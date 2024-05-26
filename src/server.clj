@@ -9,10 +9,11 @@
 )
 (def connections (atom []))
 (def port 5555) ;будем подключаться к серверу по порту 5555
-(def max-layers 2)
+(def max-players 1)
 
 (def game-state (atom { :status false }))
-
+(def current-turn (atom nil))
+(def turn-queue (atom []))
 
 
 (def exit-keyword "exit") ;кодовое слово для отключения с сервера
@@ -43,7 +44,7 @@
 
 
 
-(def max-players 2)
+
 
 (defn schedule-read-log-and-display []
   (let [executor (. java.util.concurrent.Executors newScheduledThreadPool 1)]
@@ -60,26 +61,87 @@
         (print-map-server game-map)
     )
 
+
+
+
+
+
 (def players (atom [])) 
 
-(defn add-player [player-info]
-  (swap! players conj player-info) ; 1. Добавление нового игрока в список игроков.
+(defn add-player-to-players [player]
+  (swap! players conj player) ; 1. Добавление нового игрока в список игроков.
   (println "Current players:" @players) ; 2. Вывод текущего списка игроков в консоль.
-  (let [player-id (:id player-info)] ; 3. Определение идентификатора нового игрока.
-    (swap! connections conj player-info)))
-    
+)
 
 (defn find-player-by-name [players name]
   (first (filter #(= (:name %) name) players)))
 
 
-()
-
-;; (defn print-players [players]
-;;   (println "Current players:" @players))
 
 
-(defn game-loop [game-map explored player-x player-y player-lives player-armor player-damage player-balance output-stream]
+
+(defn add-player-to-queue [player]
+  (swap! turn-queue conj player))
+
+(defn next-player []
+  (let [current (first @turn-queue)
+        remaining (rest @turn-queue)]
+    (reset! current-turn current)
+    (reset! turn-queue (conj (vec remaining) current))))
+
+(defn current-player-turn? [name]
+   (= (:name @current-turn) name))
+
+
+
+
+
+(defn print-turn [player]
+  (println (str "Current turn: " (:name player))))
+
+(defn print-turn-queue []
+  (println (str "Current turn queue: " @turn-queue )))
+
+
+
+(defn add-player [player]
+  (add-player-to-players player)
+  (add-player-to-queue player)
+
+)
+
+
+(defn wait-for-players []
+  (while (< (count @players) max-players)
+    (println (str "Waiting for players...  " max-players))
+    (Thread/sleep 1000))
+  (println "All players are ready! The game is starting..."))
+
+
+
+(defn update-player-by-name [players-atom player-name update-fn]
+  (swap! players-atom
+         (fn [players]
+           (map
+             (fn [player]
+               (if (= (:name player) player-name)
+                 (update-fn player)
+                 player))
+             players))))
+
+
+
+
+(defn update-player-coordinates [players-atom player-name new-x new-y]
+  (update-player-by-name players-atom player-name
+                         (fn [player]
+                           (assoc player :player-x new-x :player-y new-y))))
+
+
+(defn game-loop [game-map player output-stream]
+  
+  (let [{:keys [player-x player-y explored player-lives player-armor player-damage player-balance name]} player]
+  (next-player)
   (loop [game-map game-map
          explored explored
          player-x player-x
@@ -87,11 +149,15 @@
          player-lives player-lives
          player-armor player-armor
          player-damage player-damage
-         player-balance player-balance]
+         player-balance player-balance
+         name name]
+    
     (print "NICK: ")
-    (print @connections)
-    (println "Current players:" @players)
-    (print-user-name @user-name)   
+    (if (current-player-turn? name)(do
+    (update-player-coordinates players name player-x player-y)
+    ;; (print-turn @current-turn)
+    (print-turn-queue)
+    (print @players) 
     (println-win "\u001b[32;1mYour stats:\u001b[0m")
     (print-lives player-lives)
     (print-armor player-armor)
@@ -104,11 +170,13 @@
     (print "\n")
     (print-map-with-explored game-map explored)
     (flush)
+    
     (let [input (read-line)]
       (cond
         (= input "exit")
         (do
           (println-win "\u001b[32mThank you for playing the Jackal Game!\u001b[0m\n")
+          
           (flush)
           (.close output-stream))
 
@@ -117,57 +185,72 @@
               (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
           (if (= new-map game-map)
             (do
+              (next-player)
               (recur-and-print-map new-map)
-              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))
+              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
+              (next-player)
               (recur-and-print-map new-map)
-              (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance ))))
+              (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance name))))
 
         (= input "a")
         (let [[new-map new-explored new-balance new-armor new-damage]
               (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol)]
           (if (= new-map game-map)
             (do
+              (next-player)
               (recur-and-print-map new-map)
-              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))
+               (update-player-coordinates players name (- player-x 1) (+ player-y 0))
+                              
+              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
+              (next-player)
               (recur-and-print-map new-map)
-              (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance ))))
+              (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance name))))
 
         (= input "s")
         (let [[new-map new-explored new-balance new-armor new-damage]
               (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol)]
           (if (= new-map game-map)
             (do
+              (next-player)
               (recur-and-print-map new-map)
-              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))
+              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
+              (next-player)
               (recur-and-print-map new-map)
-              (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance ))))
+              (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance name))))
 
         (= input "d")
         (let [[new-map new-explored new-balance new-armor new-damage]
               (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol)]
           (if (= new-map game-map)
             (do
+              (next-player)
               (recur-and-print-map new-map)
-              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))
+              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
             (do
+              (next-player)
               (recur-and-print-map new-map)
-              (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance ))))
+              (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance name))))
 
         :else
         (do
           (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n")
           (flush)
           
-          (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance ))))))
-
+          (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))
+ (do
+        
+        (println "Not your turn")
+        (Thread/sleep 1000)
+        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))))))
 ;повторение всей красоты
 
 (def game-map
   (let [initial-game-map (create-empty-map)
         game-map-with-treasures (place-treasures initial-game-map treasure-count treasure-symbol)
+
 
         game-map-with-common-weapons (place-treasures game-map-with-treasures common-weapons-count common-weapons-symbol)
         game-map-with-rare-weapons (place-treasures game-map-with-common-weapons rare-weapons-count rare-weapons-symbol)
@@ -176,16 +259,12 @@
         game-map-with-common-armor (place-treasures game-map-with-legendary-weapons common-armor-count common-armor-symbol)
         game-map-with-rare-armor (place-treasures game-map-with-common-armor rare-armor-count rare-armor-symbol)
         game-map-with-legendary-armor (place-treasures game-map-with-rare-armor legendary-armor-count legendary-armor-symbol)
+        ; game-map-with-enemy (get-map-with-enemy game-map-with-legendary-armor @players)
     ]
     game-map-with-legendary-armor 
+    ; game-map-with-enemy
   )
 )
-
-(defn wait-for-players []
-  (while (< (count @players) max-players)
-    (println (str "Waiting for players...  " max-players))
-    (Thread/sleep 1000))
-  (println "All players are ready! The game is starting..."))
 
 
 (defn server-base-fun [input-stream output-stream]
@@ -203,16 +282,15 @@
         (binding [*in* (reader input-stream) *out* (writer output-stream)] ;биндим потоки ввода/вывода
         (welcome-in-game)
         (user-name-reader user-name)
-        
-      
       ;; Комментарий о возможности вызова Thread/sleep для задержки
       ;; (Thread/sleep 3000)
-        (add-player {:player-x player-x :player-y player-y :lives player-lives :armor player-armor :damage player-damage :balance player-balance :name @user-name})
+        (add-player {:player-x player-x :player-y player-y :explored explored :player-lives player-lives :player-armor player-armor :player-damage player-damage :player-balance player-balance :name @user-name})
         (println "current player: ")
         (println find-player-by-name @players @user-name)
+        (let [player (find-player-by-name @players @user-name)] player
         (flush)
         (wait-for-players)
-        (game-loop game-map explored player-x player-y player-lives player-armor player-damage player-balance output-stream))))
+        (game-loop game-map player output-stream)))))
 
 
 

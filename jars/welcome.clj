@@ -1,9 +1,9 @@
 
 (defn println-win [s] ;функция, которая корректно добавляет символ переноса строк для Windows
-    (.write *out* s)
-    (.write *out* "\r\n")
-    (.flush *out*))
-
+    ;; (.write *out* s)
+    ;; (.write *out* "\r\n")
+    ;; (.flush *out*))
+)
 (defn welcome-in-game [] ;функция-приветствие
     (println-win "Hi!")
     (println-win "Welcome to \u001b[33mShakals Game\u001b[0m!")

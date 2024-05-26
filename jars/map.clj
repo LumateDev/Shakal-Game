@@ -1,8 +1,9 @@
 
 (defn println-win [s] ;функция, которая корректно добавляет символ переноса строк для Windows
-    (.write *out* s)
-    (.write *out* "\r\n")
-    (.flush *out*))
+    ;; (.write *out* s)
+    ;; (.write *out* "\r\n")
+    ;; (.flush *out*))
+)
 
 (def log-writer (java.io.FileWriter. "server.log"))  ; Создаём обьект записи состояния карты в файл, для дальнейшего вывода общего состояния на сервер 
 
@@ -199,7 +200,7 @@
     :else player-damage)
 )
 
-
+; \u001b[41m\u001b[30;1mX\u001b[0m - это символ для enemy
 (defn move-player [game-map explored x y dx dy player-armor player-damage player-balance treasure-symbol] ;перемещение игрока
     (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map) border-cell "\u001b[44m\u001b[34m#\u001b[0m"]
         (if (or (< new-x 0) (> new-x (dec map-size)) ;проверяем новый х
