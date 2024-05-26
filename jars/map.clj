@@ -1,9 +1,26 @@
-
 (defn println-win [s] ;функция, которая корректно добавляет символ переноса строк для Windows
     (.write *out* s)
     (.write *out* "\r\n")
     (.flush *out*)
 )
+
+(defn decrement-player-lives [player]
+  (assoc player :player-lives (dec (:player-lives player))))
+
+
+(defn same-position? [player1 player2]
+  (and (= (:player-x player1) (:player-x player2))
+       (= (:player-y player1) (:player-y player2))))
+
+(defn update-player-by-name [players-atom player-name update-fn]
+  (swap! players-atom
+         (fn [players]
+           (map
+             (fn [player]
+               (if (= (:name player) player-name)
+                 (update-fn player)
+                 player))
+             players))))
 
 (def log-writer (java.io.FileWriter. "server.log"))  ; Создаём обьект записи состояния карты в файл, для дальнейшего вывода общего состояния на сервер 
 
@@ -199,103 +216,107 @@
     :else player-damage)
 )
 
+
+
+
 ; \u001b[41m\u001b[30;1mX\u001b[0m - это символ для enemy
-(defn move-player [game-map explored x y dx dy player-armor player-damage player-balance treasure-symbol] ;перемещение игрока
-    (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map) border-cell "\u001b[44m\u001b[34m#\u001b[0m"]
-        (if (or (< new-x 0) (> new-x (dec map-size)) ;проверяем новый х
-                (< new-y 0) (> new-y (dec map-size)) ;проверяем новый y
-                (= (get-in game-map [new-y new-x]) border-cell)) ;проверяем, является ли новая позиция границей
-            (do (println-win (colorize red "You cannot move outside the island until you collect all the treasures \u001b[47m\u001b[32m$\u001b[0m \u001b[31mor defeat all the enemies \u001b[41m\u001b[30;1mX\u001b[0m\u001b[31m! \u001b[0m\n")) ;показываем предупреждение
-                [game-map explored player-balance player-armor player-damage]) ;возвращаем неизменную карту и структуру открытых клеток
-            (let [current-cell (get-in game-map [new-y new-x])]
-                (cond ; if поменял на cond он работает с большим колличеством условий
+(defn move-player [game-map explored x y dx dy player-armor player-damage player-balance treasure-symbol players]
+  (let [new-x (+ x dx) new-y (+ y dy) map-size (count game-map) border-cell "\u001b[44m\u001b[34m#\u001b[0m"]
+    (if (or (< new-x 0) (>= new-x map-size) ;проверяем новый х
+            (< new-y 0) (>= new-y map-size) ;проверяем новый y
+            (= (get-in game-map [new-y new-x]) border-cell)) ;проверяем, является ли новая позиция границей
+      (do (println-win (colorize red "You cannot move outside the island until you collect all the treasures \u001b[47m\u001b[32m$\u001b[0m \u001b[31mor defeat all the enemies \u001b[41m\u001b[30;1mX\u001b[0m\u001b[31m! \u001b[0m\n")) ;показываем предупреждение
+          [game-map explored player-balance player-armor player-damage]) ;возвращаем неизменную карту и структуру открытых клеток
+      (let [current-cell (get-in game-map [new-y new-x])
+            occupying-player (some #(when (and (= (:player-x %) new-x) (= (:player-y %) new-y)) %) @players)]
+        (if occupying-player
+          (do ; Обработка коллизии с другим игроком
+            (println-win (str "You have attacked " (:name occupying-player) "!"))
+            (update-player-by-name players (:name occupying-player) decrement-player-lives) ; уменьшаем жизни атакуемому игроку
+            [game-map explored player-balance player-armor player-damage])
+          (cond ; if поменял на cond он работает с большим колличеством условий
 
-                    (= current-cell treasure-symbol)
-                        (do (money-message (str (inc player-balance))) ;уведомляем о пополнении счёта (перевожу ещё и в строку так как нужно для смены цвета)
-                            [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol) ;обновляем карту
-                            (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
-                            (inc player-balance) ; увеличиваем баланс 
-                            player-armor
-                            player-damage]
-                        )
+            (= current-cell treasure-symbol)
+            (do (money-message (str (inc player-balance))) ;уведомляем о пополнении счёта (перевожу ещё и в строку так как нужно для смены цвета)
+                [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol) ;обновляем карту
+                 (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
+                 (inc player-balance) ; увеличиваем баланс 
+                 player-armor
+                 player-damage])
 
-                    ;; Код для обработки наступания на броню
-                    (= current-cell common-armor-symbol)
-                        (do
-                            ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на обычную броню
-                            [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
-                            (update-explored explored new-x new-y 1)
-                            player-balance
-                            (increase-armor player-armor common-armor-symbol)
-                            player-damage]
-                        )
+            ;; Код для обработки наступания на броню
+            (= current-cell common-armor-symbol)
+            (do
+              ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на обычную броню
+              [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
+               (update-explored explored new-x new-y 1)
+               player-balance
+               (increase-armor player-armor common-armor-symbol)
+               player-damage])
 
-                    (= current-cell rare-armor-symbol)
-                        (do
-                            ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на редкую броню
-                            [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
-                            (update-explored explored new-x new-y 1)
-                            player-balance
-                            (increase-armor player-armor rare-armor-symbol)
-                            player-damage]
-                        )
+            (= current-cell rare-armor-symbol)
+            (do
+              ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на редкую броню
+              [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
+               (update-explored explored new-x new-y 1)
+               player-balance
+               (increase-armor player-armor rare-armor-symbol)
+               player-damage])
 
-                    (= current-cell legendary-armor-symbol)
-                        (do
-                            ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на легендарную броню
-                            [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
-                            (update-explored explored new-x new-y 1)
-                            player-balance
-                            (increase-armor player-armor legendary-armor-symbol)
-                            player-damage]
-                        )
+            (= current-cell legendary-armor-symbol)
+            (do
+              ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на легендарную броню
+              [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
+               (update-explored explored new-x new-y 1)
+               player-balance
+               (increase-armor player-armor legendary-armor-symbol)
+               player-damage])
 
-                    ;; Код для обработки наступания на на оружие
-                    (= current-cell common-weapons-symbol)
-                        (do
-                            ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на обычное оружие
-                            [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
-                            (update-explored explored new-x new-y 1)
-                            player-balance
-                            player-armor
-                            (increase-weapons player-damage common-weapons-symbol)]
-                        )
+            ;; Код для обработки наступания на на оружие
+            (= current-cell common-weapons-symbol)
+            (do
+              ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на обычное оружие
+              [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
+               (update-explored explored new-x new-y 1)
+               player-balance
+               player-armor
+               (increase-weapons player-damage common-weapons-symbol)])
 
-                    (= current-cell rare-weapons-symbol)
-                        (do
-                            ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на редкое оружие
-                            [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
-                            (update-explored explored new-x new-y 1)
-                            player-balance
-                            player-armor
-                            (increase-weapons player-damage rare-weapons-symbol)]
-                        )
+            (= current-cell rare-weapons-symbol)
+            (do
+              ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на редкое оружие
+              [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
+               (update-explored explored new-x new-y 1)
+               player-balance
+               player-armor
+               (increase-weapons player-damage rare-weapons-symbol)])
 
-                    (= current-cell legendary-weapons-symbol)
-                        (do
-                            ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на легендарное оружие
-                            [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
-                            (update-explored explored new-x new-y 1)
-                            player-balance
-                            player-armor
-                            (increase-weapons player-damage legendary-weapons-symbol)]
-                        )
+            (= current-cell legendary-weapons-symbol)
+            (do
+              ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на легендарное оружие
+              [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol)
+               (update-explored explored new-x new-y 1)
+               player-balance
+               player-armor
+               (increase-weapons player-damage legendary-weapons-symbol)])
 
-                    :else
-                         (try
-                            [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol) ;пытаемся переместить персонажа
-                            (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
-                            player-balance ;баланс остается прежним
-                            player-armor   ;броня остается прежней
-                            player-damage] ;оружие остается прежним
-                            (catch IndexOutOfBoundsException e
-                                (do (println-win "Caught IndexOutOfBoundsException. Ignoring movement (patchami popravim, chestno).") ;обрабатываем исключение
-                                    [game-map explored player-balance player-armor player-damage])))                    
-                )
+            :else
+            (try
+              [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol) ;пытаемся переместить персонажа
+               (update-explored explored new-x new-y 1) ;обновляем исследованные клетки
+               player-balance ;баланс остается прежним
+               player-armor   ;броня остается прежней
+               player-damage] ;оружие остается прежним
+              (catch IndexOutOfBoundsException e
+                (do (println-win "Caught IndexOutOfBoundsException. Ignoring movement (patchami popravim, chestno).") ;обрабатываем исключение
+                    [game-map explored player-balance player-armor player-damage])))
             )
+          )
         )
+      )
     )
-)
+  )
+
 
 (defn print-map-with-explored [game-map explored] ;печать карты со структурой
     (doseq [y (range (count game-map))]

@@ -79,6 +79,9 @@
     (reset! current-turn current)
     (reset! turn-queue (conj (vec remaining) current))))
 
+
+
+
 ;проверка переменной текущий ход с именем игрока
 (defn current-player-turn? [name]
    (=  @current-turn name))
@@ -129,116 +132,164 @@
           players))
 
 
+(defn decrement-player-lives [player]
+  (assoc player :player-lives (dec (:player-lives player))))
 
 
+(defn same-position? [player1 player2]
+  (and (= (:player-x player1) (:player-x player2))
+       (= (:player-y player1) (:player-y player2))))
 
 
 (defn game-loop [game-map player output-stream]
   (let [{:keys [player-x player-y explored player-lives player-armor player-damage player-balance name]} player]
-  (next-player)
-  (loop [game-map game-map
-         explored explored
-         player-x player-x
-         player-y player-y
-         player-lives player-lives
-         player-armor player-armor
-         player-damage player-damage
-         player-balance player-balance
-         name name]
-    (println-win (str "NICK: " name)) ; Имя пользхователя текущего потока
-    (println-win (str "Current queue: " @turn-queue)) ; Очередь ходов
-    (update-player players name player-x player-y explored player-lives player-armor player-damage player-balance)  ;обновляем координаты игрока со значениями, которые пришли на прошлой итерации
-    ; (print @players) 
-    (println-win "\u001b[32;1mYour stats:\u001b[0m")
-    (print-lives player-lives)
-    (print-armor player-armor)
-    (print-damage player-damage)
-    (print "\n")
-    (println-win "\u001b[33;1mYour inventory:\u001b[0m")
-    (print-current-armor player-armor)
-    (print-current-weapon player-damage)
-    (print-balance player-balance)
-    (print "\n")
-    (let [game-map-with-players (update-game-map-with-players game-map @players player-symbol)]
-    (print-map-with-explored game-map-with-players explored)
-    (flush)
-    (if (current-player-turn? name)(do ;если ход текущего игрока
-    (println-win "It's your turn now:")
-    (let [input (read-line)]
-      (cond
-        (= input "exit")
-        (do
-          (println-win "\u001b[32mThank you for playing the Jackal Game!\u001b[0m\n")
-          (flush)
-          (.close output-stream))
-        (= input "w")
-        (let [[new-map new-explored new-balance new-armor new-damage]
-              (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
-          (if (= new-map game-map)
-            (do
-              (next-player) ; передает ход
-              (recur-and-print-map new-map) ; КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-              ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
-            (do
-              (next-player); передает ход
-              (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-              ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-              (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance name))))
-        (= input "a")
-        (let [[new-map new-explored new-balance new-armor new-damage]
-              (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol)]
-          (if (= new-map game-map)
-            (do
-              (next-player); передает ход
-              (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-              ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-                              
-              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
-            (do
-              (next-player); передает ход
-              (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-              ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-              (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance name))))
-        (= input "s")
-        (let [[new-map new-explored new-balance new-armor new-damage]
-              (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol)]
-          (if (= new-map game-map)
-            (do
-              (next-player); передает ход
-              (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-              ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
-            (do
-              (next-player); передает ход
-              (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-              ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-              (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance name))))
-        (= input "d")
-        (let [[new-map new-explored new-balance new-armor new-damage]
-              (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol)]
-          (if (= new-map game-map)
-            (do
-              (next-player); передает ход
-              (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-              ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-              (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
-            (do
-              (next-player); передает ход
-              (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
-              ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
-              (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance name))))
-        :else
-        (do
-          (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n")
-          (flush)
-          (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))
- (do ;если не ход текущего игрока
-        (println-win "Not your turn!")
-        (update-thread) ; Вызываем тормозок (так как у меня не работаю потоки то вот таой вариант, если работают потоки, коммитте это и откоммитте следующую строку)
-        ; (Thread/sleep 1000)
-        (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))))
-;повторение всей красоты
+    (next-player)
+    (loop [game-map game-map
+           explored explored
+           player-x player-x
+           player-y player-y
+           player-lives player-lives
+           player-armor player-armor
+           player-damage player-damage
+           player-balance player-balance
+           name name]
+      (println-win (str "NICK: " name)) ; Имя пользователя текущего потока
+      (println-win (str "Current queue: " @turn-queue)) ; Очередь ходов
+      (update-player players name player-x player-y explored player-lives player-armor player-damage player-balance)  ; обновляем координаты игрока со значениями, которые пришли на прошлой итерации
+      (println-win "\u001b[32;1mYour stats:\u001b[0m")
+      (print-lives player-lives)
+      (print-armor player-armor)
+      (print-damage player-damage)
+      (print "\n")
+      (println-win "\u001b[33;1mYour inventory:\u001b[0m")
+      (print-current-armor player-armor)
+      (print-current-weapon player-damage)
+      (print-balance player-balance)
+      (print "\n")
+      (let [game-map-with-players (update-game-map-with-players game-map @players player-symbol)]
+        (print-map-with-explored game-map-with-players explored)
+        (flush)
+        (if (current-player-turn? name)
+          (do ; если ход текущего игрока
+            (println-win "It's your turn now:")
+            (let [input (read-line)]
+              (cond
+                (= input "exit")
+                (do
+                  (println-win "\u001b[32mThank you for playing the Jackal Game!\u001b[0m\n")
+                  (flush)
+                  (.close output-stream))
+
+                (= input "w")
+                (let [[new-map new-explored new-balance new-armor new-damage]
+                      (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol players)]
+                  (if (= new-map game-map)
+                    (do
+                      (next-player) ; передает ход
+                      (recur-and-print-map new-map) ; возвращает текущее состояние карты в функцию записи в файл
+                      (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
+                    (do
+                      (doseq [other-player (remove #(= % player) @players)]
+                        (when (and (= player-x (:player-x other-player))
+                                   (= (dec player-y) (:player-y other-player)))
+                          (println-win (str "Player " (:name other-player) " attacked by " (:name player)))
+                          (swap! players
+                                 (fn [players]
+                                   (map (fn [p]
+                                          (if (= (:name p) (:name other-player))
+                                            (decrement-player-lives p)
+                                            p))
+                                        players)))
+                          (reset! player {:player-x player-x :player-y player-y})))
+                      (next-player) ; передает ход
+                      (recur-and-print-map new-map) ; возвращает текущее состояние карты в функцию записи в файл
+                      (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance name))))
+
+                (= input "a")
+                (let [[new-map new-explored new-balance new-armor new-damage]
+                      (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol players)]
+                  (if (= new-map game-map)
+                    (do
+                      (next-player); передает ход
+                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
+                    (do
+                      (doseq [other-player (remove #(= % player) @players)]
+                        (when (and (= player-x (:player-x other-player))
+                                   (= (dec player-y) (:player-y other-player)))
+                          (println-win (str "Player " (:name other-player) " attacked by " (:name player)))
+                          (swap! players
+                                 (fn [players]
+                                   (map (fn [p]
+                                          (if (= (:name p) (:name other-player))
+                                            (decrement-player-lives p)
+                                            p))
+                                        players)))
+                          (reset! player {:player-x player-x :player-y player-y})))
+                      (next-player); передает ход
+                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance name))))
+
+                (= input "s")
+                (let [[new-map new-explored new-balance new-armor new-damage]
+                      (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol players)]
+                  (if (= new-map game-map)
+                    (do
+                      (next-player); передает ход
+                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
+                    (do
+                      (doseq [other-player (remove #(= % player) @players)]
+                        (when (and (= player-x (:player-x other-player))
+                                   (= (dec player-y) (:player-y other-player)))
+                          (println-win (str "Player " (:name other-player) " attacked by " (:name player)))
+                          (swap! players
+                                 (fn [players]
+                                   (map (fn [p]
+                                          (if (= (:name p) (:name other-player))
+                                            (decrement-player-lives p)
+                                            p))
+                                        players)))
+                          (reset! player {:player-x player-x :player-y player-y})))
+                      (next-player); передает ход
+                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance name))))
+
+                (= input "d")
+                (let [[new-map new-explored new-balance new-armor new-damage]
+                      (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol players)]
+                  (if (= new-map game-map)
+                    (do
+                      (next-player); передает ход
+                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
+                    (do
+                      (doseq [other-player (remove #(= % player) @players)]
+                        (when (and (= player-x (:player-x other-player))
+                                   (= (dec player-y) (:player-y other-player)))
+                          (println-win (str "Player " (:name other-player) " attacked by " (:name player)))
+                          (swap! players
+                                 (fn [players]
+                                   (map (fn [p]
+                                          (if (= (:name p) (:name other-player))
+                                            (decrement-player-lives p)
+                                            p))
+                                        players)))
+                          (reset! player {:player-x player-x :player-y player-y})))
+                      (next-player); передает ход
+                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance name))))
+
+                :else
+                (do
+                  (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n")
+                  (flush)
+                  (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))
+          (do ; если не ход текущего игрока
+            (println-win "Not your turn!")
+            (update-thread) ; Вызываем тормозок (так как у меня не работают потоки то вот такой вариант, если работают потоки, закоммитте это и раскоммитте следующую строку)
+            ; (Thread/sleep 1000)
+            (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))))
 
 (def game-map
   (let [initial-game-map (create-empty-map) ;создание пустой карты
