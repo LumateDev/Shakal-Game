@@ -7,7 +7,7 @@
 
 (def log-writer (java.io.FileWriter. "server.log"))  ; Создаём обьект записи состояния карты в файл, для дальнейшего вывода общего состояния на сервер 
 
-(def map-size 40) ;задаём размер карты
+(def map-size 15) ;задаём размер карты
 (def player-symbol "\u001b[46m\u001b[36;1mX\u001b[0m") ; это игрок
 (def enemies-symbol "\u001b[41m\u001b[30;1mX\u001b[0m") ; это враги
 
@@ -21,11 +21,9 @@
 (def rare-armor-symbol "\u001b[42m\u001b[37;1m)\u001b[0m")
 (def legendary-armor-symbol "\u001b[45m\u001b[33;1m]\u001b[0m")
 
-
 (def common-weapons-symbol "\u001b[47m\u001b[30;1m!\u001b[0m")
 (def rare-weapons-symbol "\u001b[42m\u001b[37;1m|\u001b[0m")
 (def legendary-weapons-symbol "\u001b[45m\u001b[33;1m}\u001b[0m")
-
 
 (def yell-bg "\033[43m") ; жёлтый цвет фона
 (def grey-background "\u001b[40m") ; Серый цвет фона
@@ -38,10 +36,8 @@
 
 (def nrm-bg  "\033[0m")  ; вернуть норм цвет
 
-
 (defn colorize [color-code text]
   (str color-code text nrm-bg)) ; функция смены цвета
-
 
 (defn create-empty-map [] ;создаём пустую карту
     (let [empty-row (vec (for [_ (range map-size)] map-cell))
@@ -72,7 +68,6 @@
     (println log-content)
     (clear-log-file)))
 
-
 (defn print-map-with-player [game-map player-x player-y] ;выводим карту с игроком в консоль
     (doseq [y (range (count game-map))]
         (doseq [x (range (count (first game-map)))]
@@ -82,7 +77,6 @@
 
 (defn get-random-empty-cell [game-map] ;получение случайной клетки на карте
     (let [x (+ 1 (rand-int (inc (- (- map-size 2) 1)))) y (+ 1 (rand-int (inc (- (- map-size 2) 1))))] [x y]))
-
 
 ; Функция для рандомного размещения чего бы-то ни было на карте, но Саня писал под сокровища и я и н стал переименовывать но переиспользую
 (defn place-treasures [game-map treasure-count treasure-symbol]
@@ -105,7 +99,6 @@
           (recur (assoc-in current-map [player-y player-x] player-symbol) (rest remaining-players))
           (recur current-map (rest remaining-players)))))))
 
-
 (defn get-static-empty-cell [game-map] [0 0]) ;получения статичной клетки на карте
 
 (defn place-player [game-map x y] ;функция, которая помещает игрока на переданную клетку
@@ -126,18 +119,15 @@
                 dy (range (- radius) (inc radius))]
             [(+ x dx) (+ y dy)])))
 
-
 (defn print-user-name [user-name] ; Выводим текущее имя пользователя
     (println-win (colorize purple (str user-name)))
 )
-
 
 (defn print-lives [player-lives]
   (println-win (colorize grey-background (str "HP: " (colorize red (apply str (take player-lives (repeat  "<3 ")))))))) ; функция отображения жизней ♥
 
 (defn decrease-lives [player-lives]
   (dec player-lives))  ; функция отнимания жизней (пока нигде не вызывается, после может вызыватся в сражениях, или при наступании на ловушки)
-
 
 (defn print-armor [player-armor]  ; функция отображения очков брони
     (if (= player-armor 0)
@@ -193,7 +183,6 @@
   )
 )
 
-
 (defn increase-armor [player-armor armor-symbol]  ; Функция для изменения состояния оков БРОНИ при подборе новой
   (cond
     (= armor-symbol common-armor-symbol) (:= player-armor 1)
@@ -201,7 +190,6 @@
     (= armor-symbol legendary-armor-symbol) (:= player-armor 3)
     :else player-armor)
 )
-
 
 (defn increase-weapons [player-damage weapons-symbol]  ; Функция для изменения состояния оков УРОНА при подборе новой
   (cond
@@ -221,7 +209,7 @@
                 [game-map explored player-balance player-armor player-damage]) ;возвращаем неизменную карту и структуру открытых клеток
             (let [current-cell (get-in game-map [new-y new-x])]
                 (cond ; if поменял на cond он работает с большим колличеством условий
-                    
+
                     (= current-cell treasure-symbol)
                         (do (money-message (str (inc player-balance))) ;уведомляем о пополнении счёта (перевожу ещё и в строку так как нужно для смены цвета)
                             [(assoc-in (assoc-in game-map [y x] map-cell) [new-y new-x] player-symbol) ;обновляем карту
@@ -229,7 +217,7 @@
                             (inc player-balance) ; увеличиваем баланс 
                             player-armor
                             player-damage]
-                        )    
+                        )
 
                     ;; Код для обработки наступания на броню
                     (= current-cell common-armor-symbol)
@@ -251,7 +239,7 @@
                             (increase-armor player-armor rare-armor-symbol)
                             player-damage]
                         )
-                    
+
                     (= current-cell legendary-armor-symbol)
                         (do
                             ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на легендарную броню
@@ -282,7 +270,7 @@
                             player-armor
                             (increase-weapons player-damage rare-weapons-symbol)]
                         )
-                    
+
                     (= current-cell legendary-weapons-symbol)
                         (do
                             ;; Здесь можно добавить любой код, который должен выполняться, когда игрок попадает на легендарное оружие
@@ -316,5 +304,3 @@
                 (get-in game-map [y x])
                     " ")))
         (println-win "")))
-
-

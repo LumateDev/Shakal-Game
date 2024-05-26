@@ -16,7 +16,6 @@
 (def current-turn (atom nil)) ; текущий код
 (def turn-queue (atom []))
 
-
 (def exit-keyword "exit") ;кодовое слово для отключения с сервера
 (def game-map (create-empty-map)) ;создаём пустую карту
 
@@ -45,7 +44,6 @@
 (def player-symbol "\u001b[46m\u001b[36;1mX\u001b[0m") ; это игрок
 (def enemies-symbol "\u001b[41m\u001b[30;1mX\u001b[0m") ; это враги
 
-
 (defn schedule-read-log-and-display []
   (let [executor (. java.util.concurrent.Executors newScheduledThreadPool 1)]
     (.scheduleAtFixedRate executor read-log-and-display 0 3 java.util.concurrent.TimeUnit/SECONDS)))
@@ -55,16 +53,10 @@
     (.write *out* "\r\n")
     (.flush *out*))
 
-
 (defn recur-and-print-map ; Функция для рекурсивной смены состояния карты сервера, вызывает функцию непосредственной записи текущей карты в файл логов
         [game-map]
         (print-map-server game-map)
     )
-
-
-
-
-
 
 ;добавляем плеера к вектору всех игроков
 (defn add-player-to-players [player]
@@ -75,9 +67,6 @@
 ;ищем игрока по имени
 (defn find-player-by-name [players name]
   (first (filter #(= (:name %) name) players)))
-
-
-
 
 ;добавляем в массив очереди имена
 (defn add-player-to-queue [player]
@@ -94,16 +83,10 @@
 (defn current-player-turn? [name]
    (=  @current-turn name))
 
-
-
-
-
-
 ;добавляем игрока сразу в очередь и в стек игроков
 (defn add-player [player]
   (add-player-to-players player)
   (add-player-to-queue player)
-
 )
 
 (defn update-thread [] ; тормозок
@@ -120,7 +103,6 @@
     )
   (println-win "All players are ready! The game is starting..."))
 
-
 ; ищет игрока по имени и обновляет его данные
 (defn update-player-by-name [players-atom player-name update-fn]
   (swap! players-atom
@@ -132,19 +114,13 @@
                  player))
              players))))
 
-
-
 ; частные случай обновления. обновляет только координаты
 (defn update-player-coordinates [players-atom player-name new-x new-y]
   (update-player-by-name players-atom player-name
                          (fn [player]
                            (assoc player :player-x new-x :player-y new-y))))
 
- 
-
-
 (defn game-loop [game-map player output-stream]
-  
   (let [{:keys [player-x player-y explored player-lives player-armor player-damage player-balance name]} player]
   (next-player)
   (loop [game-map game-map
@@ -156,13 +132,8 @@
          player-damage player-damage
          player-balance player-balance
          name name]
-    
     (println-win (str "NICK: " name)) ; Имя пользхователя текущего потока
-
     (println-win (str "Current queue: " @turn-queue)) ; Очередь ходов
-
-
-    
     (update-player-coordinates players name player-x player-y)  ;обновляем координаты игрока со значениями, которые пришли на прошлой итерации
     ; (print @players) 
     (println-win "\u001b[32;1mYour stats:\u001b[0m")
@@ -178,15 +149,14 @@
     (print-map-with-explored game-map explored)
     (flush)
     (if (current-player-turn? name)(do ;если ход текущего игрока
+    (println-win "It's your turn now:")
     (let [input (read-line)]
       (cond
         (= input "exit")
         (do
           (println-win "\u001b[32mThank you for playing the Jackal Game!\u001b[0m\n")
-          
           (flush)
           (.close output-stream))
-
         (= input "w")
         (let [[new-map new-explored new-balance new-armor new-damage]
               (move-player game-map explored player-x player-y 0 -1 player-armor player-damage player-balance treasure-symbol)]
@@ -201,7 +171,6 @@
               (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
               ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
               (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance name))))
-
         (= input "a")
         (let [[new-map new-explored new-balance new-armor new-damage]
               (move-player game-map explored player-x player-y -1 0 player-armor player-damage player-balance treasure-symbol)]
@@ -218,7 +187,6 @@
               (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
               ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
               (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance name))))
-
         (= input "s")
         (let [[new-map new-explored new-balance new-armor new-damage]
               (move-player game-map explored player-x player-y 0 1 player-armor player-damage player-balance treasure-symbol)]
@@ -233,7 +201,6 @@
               (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
               ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
               (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance name))))
-
         (= input "d")
         (let [[new-map new-explored new-balance new-armor new-damage]
               (move-player game-map explored player-x player-y 1 0 player-armor player-damage player-balance treasure-symbol)]
@@ -248,15 +215,12 @@
               (recur-and-print-map new-map); КАЖДЫЙ РАЗ  ПЕРЕД РЕКУРСИВНЫМ ИЗМЕНЕНИЕМ КАРТЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ 
               ; ПЕРЕДАЁМ ТЕКУЩЕЕ СОСТОЯНИЕ КАРТЫ В ФУНКЦИЮ ЗАПИСИ В ФАЙЛ
               (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance name))))
-
         :else
         (do
           (println-win "\u001b[31mInvalid input. Use w, a, s, or d.\u001b[0m\n")
           (flush)
-          
           (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))
  (do ;если не ход текущего игрока
-        
         (println-win "Not your turn!")
         (update-thread) ; Вызываем тормозок (так как у меня не работаю потоки то вот таой вариант, если работают потоки, коммитте это и откоммитте следующую строку)
         ; (Thread/sleep 1000)
@@ -266,7 +230,6 @@
 (def game-map
   (let [initial-game-map (create-empty-map) ;создание пустой карты
         game-map-with-treasures (place-treasures initial-game-map treasure-count treasure-symbol) ;разместить сокровища на карте
-
 
         game-map-with-common-weapons (place-treasures game-map-with-treasures common-weapons-count common-weapons-symbol) ; разместить обычные оружия на карте
         game-map-with-rare-weapons (place-treasures game-map-with-common-weapons rare-weapons-count rare-weapons-symbol) ; разместить редкие оружия на карте
@@ -283,11 +246,9 @@
   )
 )
 
-
 (defn server-base-fun [input-stream output-stream]
    (let [[player-x player-y] (get-random-empty-cell game-map) ;получаем клетку для игрока
 
-         
          game-map (place-player game-map player-x player-y) ;спавним игрока
          explored (update-explored (initialize-explored (count game-map)) player-x player-y 1)  ;обновляем данные о карте
          player-balance 0]
@@ -305,10 +266,8 @@
         (wait-for-players) ; ждем пока все игроки подключены
         (game-loop game-map player output-stream)))))
 
-
-
 (defn handle-connection [input-stream output-stream]
    (swap! connections conj {:input-stream input-stream :output-stream output-stream }) ;добавляем новое соединение в список
   (server-base-fun input-stream output-stream))
 
-(def server (create-server port handle-connection)) 
+(def server (create-server port handle-connection))

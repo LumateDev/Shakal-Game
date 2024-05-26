@@ -24,7 +24,6 @@
     (println-win "\n") ; Визуально отделил
 ) 
 
-
 ;; (defn user-name-reader [user-name]  ; Функция для получения имени пользователя
 ;;     (println-win "Input user naem: ")
 ;;     (let [input (read-line)]
