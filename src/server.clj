@@ -103,8 +103,8 @@
 (defn wait-for-players []
   (while (< (count @players) max-players)
     (println-win (str "\u001b[33mWaiting for players...  \u001b[0m" max-players))
-    (update-thread) ; Вызываем тормозок (так как у меня не работаю потоки то вот таой вариант, если работают потоки, коммитте это и откоммитте следующую строку)
-    ; (Thread/sleep 1000)
+    ;(update-thread) ; Вызываем тормозок (так как у меня не работаю потоки то вот таой вариант, если работают потоки, коммитте это и откоммитте следующую строку)
+    (Thread/sleep 1000)
     )
   (println-win "\u001b[32mAll players are ready! The game is starting...\u001b[0m\n"))
 
@@ -192,7 +192,7 @@
       (println-win (str "Current queue: " (colorize "\u001b[47m\u001b[30m" (str @turn-queue)))) ; Очередь ходов
       (update-player players name player-x player-y explored player-lives player-armor player-damage player-balance)  ; обновляем координаты игрока со значениями, которые пришли на прошлой итерации
       (println-win "\u001b[32;1mYour stats:\u001b[0m")
-      (print-lives player-lives)
+      (print-lives (:player-lives player))
       (print-armor player-armor)
       (print-damage player-damage)
       (print "\n")
@@ -326,8 +326,8 @@
                   (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))
           (do ; если не ход текущего игрока
             (println-win "\u001b[31mNot your turn!\u001b[0m")
-            (update-thread) ; Вызываем тормозок (так как у меня не работают потоки то вот такой вариант, если работают потоки, закоммитте это и раскоммитте следующую строку)
-            ; (Thread/sleep 1000)
+            ;(update-thread) ; Вызываем тормозок (так как у меня не работают потоки то вот такой вариант, если работают потоки, закоммитте это и раскоммитте следующую строку)
+            (Thread/sleep 1000)
             (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))))
 
 (def game-map
