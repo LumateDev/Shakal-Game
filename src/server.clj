@@ -41,8 +41,10 @@
 (def player-lives 3) ; начальное колличество жизней
 (def player-armor 0) ; начальное колличество очков защиты
 (def player-damage 1) ; начальное колличество очков урона
+
 (def player-symbol "\u001b[46m\u001b[36;1mX\u001b[0m") ; это игрок
 (def enemies-symbol "\u001b[41m\u001b[30;1mX\u001b[0m") ; это враги
+(def turn-symbol "\u001b[45m\u001b[32;1mX\u001b[0m") ; символ текущего хода
 
 (defn schedule-read-log-and-display []
   (let [executor (. java.util.concurrent.Executors newScheduledThreadPool 1)]
@@ -94,17 +96,17 @@
 
 (defn update-thread [] ; тормозок
     (read-line)
-    (println-win "wait...")
+    (println-win "\u001b[41mwait...\u001b[0m\n\n")
 )
 
 ;ожидает подключения всех игроков
 (defn wait-for-players []
   (while (< (count @players) max-players)
-    (println-win (str "Waiting for players...  " max-players))
+    (println-win (str "\u001b[33mWaiting for players...  \u001b[0m" max-players))
     (update-thread) ; Вызываем тормозок (так как у меня не работаю потоки то вот таой вариант, если работают потоки, коммитте это и откоммитте следующую строку)
     ; (Thread/sleep 1000)
     )
-  (println-win "All players are ready! The game is starting..."))
+  (println-win "\u001b[32mAll players are ready! The game is starting...\u001b[0m\n"))
 
 ; ищет игрока по имени и обновляет его данные
 (defn update-player-by-name [players-atom player-name update-fn]
@@ -124,12 +126,45 @@
                            (assoc player :player-x new-x :player-y new-y :explored explored :player-lives player-lives :player-armor player-armor :player-damage player-damage :player-balance player-balance))))
 
 
-(defn update-game-map-with-players [game-map players player-symbol]
+(defn update-game-map-with-players [game-map players player-symbol enemies-symbol]
   (reduce (fn [m player]
             (let [{:keys [player-x player-y]} player]
               (assoc-in m [player-y player-x] player-symbol)))
           game-map
           players))
+
+;; (defn server-game-map-with-players [game-map players-atom player-symbol enemies-symbol current-player]
+;;   (let [current-player-atom (first (filter #(= (:name %) current-player) @players-atom))
+;;         rest-players-atom (remove #(= (:name %) current-player) @players-atom)]
+;;     (let [map-with-current (assoc-in game-map [(current-player-atom :player-y) (current-player-atom :player-x)] player-symbol)]
+;;       (reduce (fn [m player]
+;;                 (let [{:keys [player-x player-y]} player]
+;;                   (assoc-in m [player-y player-x] enemies-symbol)))
+;;               map-with-current
+;;               rest-players-atom))))
+
+(defn server-game-map-with-players [game-map players player-symbol turn-symbol current-player]  ; Писал одно вышло другое, теперь это работает как показывание прошлого хода на
+  ;; (let [rest-players (remove #(= (:name %) current-player) players)]
+   ;; (let [map-with-current (assoc-in game-map [(current-player :player-y) (current-player :player-x)] turn-symbol)]
+      (reduce (fn [m player]
+                (let [{:keys [player-x player-y]} player]
+                  (assoc-in m [player-y player-x] turn-symbol)))
+              game-map
+             players)
+              ;; ))
+              )
+
+
+
+;; (defn update-game-map-with-players [game-map players player-symbol enemies-symbol]
+;;   (let [first-player (first players)
+;;         rest-players (rest players)]
+;;     (let [map-with-first (assoc-in game-map [(first-player :player-y) (first-player :player-x)] player-symbol)]
+;;       (reduce (fn [m player]
+;;                 (let [{:keys [player-x player-y]} player]
+;;                   (assoc-in m [player-y player-x] enemies-symbol)))
+;;               map-with-first
+;;               rest-players))))          
 
 
 (defn decrement-player-lives [player]
@@ -153,8 +188,8 @@
            player-damage player-damage
            player-balance player-balance
            name name]
-      (println-win (str "NICK: " name)) ; Имя пользователя текущего потока
-      (println-win (str "Current queue: " @turn-queue)) ; Очередь ходов
+      (println-win (str "NICK: " (colorize "\u001b[35m" (str name)))) ; Имя пользователя текущего потока
+      (println-win (str "Current queue: " (colorize "\u001b[47m\u001b[30m" (str @turn-queue)))) ; Очередь ходов
       (update-player players name player-x player-y explored player-lives player-armor player-damage player-balance)  ; обновляем координаты игрока со значениями, которые пришли на прошлой итерации
       (println-win "\u001b[32;1mYour stats:\u001b[0m")
       (print-lives player-lives)
@@ -166,12 +201,16 @@
       (print-current-weapon player-damage)
       (print-balance player-balance)
       (print "\n")
-      (let [game-map-with-players (update-game-map-with-players game-map @players player-symbol)]
+      (let [
+            current-player (if (= (:name player) @current-turn) player (find-player-by-name @players @current-turn))  ; Находим текущий ход
+            game-map-with-players (update-game-map-with-players game-map @players player-symbol enemies-symbol) ; Отрисовываем ход на сервере
+           ]
         (print-map-with-explored game-map-with-players explored)
         (flush)
         (if (current-player-turn? name)
           (do ; если ход текущего игрока
-            (println-win "It's your turn now:")
+            ; (println-win "It's your turn now:") ; Если впадлу скопировать это в бота, то это комить нижнгее раскомить (строка-то теперь поменялась)
+            (println-win "\u001b[32mIt's your turn now:\u001b[0m") ; А так лучше это в бота скопируй ,так и у нас вывод красивее, и у тебя бот работать будет, какая ему разница по большому счёт
             (let [input (read-line)]
               (cond
                 (= input "exit")
@@ -186,13 +225,13 @@
                   (if (= new-map game-map)
                     (do
                       (next-player) ; передает ход
-                      (recur-and-print-map new-map) ; возвращает текущее состояние карты в функцию записи в файл
+                      (recur-and-print-map (server-game-map-with-players new-map @players player-symbol turn-symbol current-player)) ; возвращает текущее состояние карты в функцию записи в файл
                       (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
                     (do
                       (doseq [other-player (remove #(= % player) @players)]
                         (when (and (= player-x (:player-x other-player))
                                    (= (dec player-y) (:player-y other-player)))
-                          (println-win (str "Player " (:name other-player) " attacked by " (:name player)))
+                          (println-win (str "Player " (:name other-player) " attacked by " (:name player) "\n"))
                           (swap! players
                                  (fn [players]
                                    (map (fn [p]
@@ -202,7 +241,7 @@
                                         players)))
                           (reset! player {:player-x player-x :player-y player-y})))
                       (next-player) ; передает ход
-                      (recur-and-print-map new-map) ; возвращает текущее состояние карты в функцию записи в файл
+                      (recur-and-print-map (server-game-map-with-players new-map @players player-symbol turn-symbol current-player)) ; возвращает текущее состояние карты в функцию записи в файл
                       (recur new-map new-explored player-x (dec player-y) player-lives new-armor new-damage new-balance name))))
 
                 (= input "a")
@@ -211,13 +250,13 @@
                   (if (= new-map game-map)
                     (do
                       (next-player); передает ход
-                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur-and-print-map (server-game-map-with-players new-map @players player-symbol turn-symbol current-player)); возвращает текущее состояние карты в функцию записи в файл
                       (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
                     (do
                       (doseq [other-player (remove #(= % player) @players)]
                         (when (and (= player-x (:player-x other-player))
                                    (= (dec player-y) (:player-y other-player)))
-                          (println-win (str "Player " (:name other-player) " attacked by " (:name player)))
+                          (println-win (str "Player " (:name other-player) " attacked by " (:name player) "\n"))
                           (swap! players
                                  (fn [players]
                                    (map (fn [p]
@@ -227,7 +266,7 @@
                                         players)))
                           (reset! player {:player-x player-x :player-y player-y})))
                       (next-player); передает ход
-                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur-and-print-map (server-game-map-with-players new-map @players player-symbol turn-symbol current-player)); возвращает текущее состояние карты в функцию записи в файл
                       (recur new-map new-explored (dec player-x) player-y player-lives new-armor new-damage new-balance name))))
 
                 (= input "s")
@@ -236,13 +275,13 @@
                   (if (= new-map game-map)
                     (do
                       (next-player); передает ход
-                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur-and-print-map (server-game-map-with-players new-map @players player-symbol turn-symbol current-player)); возвращает текущее состояние карты в функцию записи в файл
                       (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
                     (do
                       (doseq [other-player (remove #(= % player) @players)]
                         (when (and (= player-x (:player-x other-player))
                                    (= (dec player-y) (:player-y other-player)))
-                          (println-win (str "Player " (:name other-player) " attacked by " (:name player)))
+                          (println-win (str "Player " (:name other-player) " attacked by " (:name player) "\n"))
                           (swap! players
                                  (fn [players]
                                    (map (fn [p]
@@ -252,7 +291,7 @@
                                         players)))
                           (reset! player {:player-x player-x :player-y player-y})))
                       (next-player); передает ход
-                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur-and-print-map (server-game-map-with-players new-map @players player-symbol turn-symbol current-player)); возвращает текущее состояние карты в функцию записи в файл
                       (recur new-map new-explored player-x (inc player-y) player-lives new-armor new-damage new-balance name))))
 
                 (= input "d")
@@ -261,13 +300,13 @@
                   (if (= new-map game-map)
                     (do
                       (next-player); передает ход
-                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur-and-print-map (server-game-map-with-players new-map @players player-symbol turn-symbol current-player)); возвращает текущее состояние карты в функцию записи в файл
                       (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name))
                     (do
                       (doseq [other-player (remove #(= % player) @players)]
                         (when (and (= player-x (:player-x other-player))
                                    (= (dec player-y) (:player-y other-player)))
-                          (println-win (str "Player " (:name other-player) " attacked by " (:name player)))
+                          (println-win (str "Player " (:name other-player) " attacked by " (:name player) "\n"))
                           (swap! players
                                  (fn [players]
                                    (map (fn [p]
@@ -277,7 +316,7 @@
                                         players)))
                           (reset! player {:player-x player-x :player-y player-y})))
                       (next-player); передает ход
-                      (recur-and-print-map new-map); возвращает текущее состояние карты в функцию записи в файл
+                      (recur-and-print-map (server-game-map-with-players new-map @players player-symbol turn-symbol current-player)); возвращает текущее состояние карты в функцию записи в файл
                       (recur new-map new-explored (inc player-x) player-y player-lives new-armor new-damage new-balance name))))
 
                 :else
@@ -286,7 +325,7 @@
                   (flush)
                   (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))
           (do ; если не ход текущего игрока
-            (println-win "Not your turn!")
+            (println-win "\u001b[31mNot your turn!\u001b[0m")
             (update-thread) ; Вызываем тормозок (так как у меня не работают потоки то вот такой вариант, если работают потоки, закоммитте это и раскоммитте следующую строку)
             ; (Thread/sleep 1000)
             (recur game-map explored player-x player-y player-lives player-armor player-damage player-balance name)))))))

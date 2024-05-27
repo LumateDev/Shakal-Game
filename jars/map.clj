@@ -54,6 +54,7 @@
 (defn colorize [color-code text]
   (str color-code text nrm-bg)) ; функция смены цвета
 
+
 (defn create-empty-map [] ;создаём пустую карту
     (let [empty-row (vec (for [_ (range map-size)] map-cell))
           border-row (vec (for [_ (range map-size)] border-cell))]
@@ -144,7 +145,7 @@
 ;Отнимание здоровья 
 (defn decrease-lives [player]
   (let [updated-lives (max 0 (dec (:player-lives player)))]
-    (println-win (str "Player " (:name player) " lives decreased to " updated-lives))
+    (println-win (str "Player " (colorize purple (str (:name player))) " lives decreased to " (colorize red ( apply str (take updated-lives (repeat  "<3 "))))))
     (assoc player :player-lives updated-lives)))
 
 (defn print-armor [player-armor]  ; функция отображения очков брони
