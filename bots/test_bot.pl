@@ -47,11 +47,11 @@ process_message(Message, OutStream, State, NewState) :-
         format("Send to the server: ~w~n", "LilJuk ak Patrolman"),
         NewState = State %ввод никнейма
       ;
-      sub_string(Message, _, _, _, "It's your turn now:") -> 
+      sub_string(Message, _, _, _, "\u001b[32mIt's your turn now:\u001b[0m") -> 
         format("Received from server: ~w~n", [Message]),
         move_bot(State, OutStream, NewState) %перемещение по алгоритму
       ;
-      sub_string(Message, _, _, _, "Not your turn!") -> 
+      sub_string(Message, _, _, _, "\u001b[31mNot your turn!\u001b[0m") -> 
         format("Received from server: ~w~n", [Message]),
         NewState = State %пропуск сообщения об ожидании
       ;
